@@ -3,6 +3,8 @@ module github.com/morozovcookie/atlant
 go 1.15
 
 require (
+	github.com/caarlos0/env v3.5.0+incompatible // indirect
+	github.com/caarlos0/env/v6 v6.4.0
 	github.com/confluentinc/confluent-kafka-go v1.4.2
 	github.com/go-chi/chi v4.1.2+incompatible
 	github.com/gogo/protobuf v1.3.1
