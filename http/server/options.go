@@ -1,19 +1,19 @@
-package http
+package server
 
 import (
 	"net/http"
 	"time"
 )
 
-// ServerOption represent any option for configuring HTTP server.
-type ServerOption interface {
-	apply(server *Server)
+// Option represent any option for configuring HTTP server.
+type Option interface {
+	apply(s *Server)
 }
 
-type serverOptionFunc func(server *Server)
+type serverOptionFunc func(s *Server)
 
-func (f serverOptionFunc) apply(server *Server) {
-	f(server)
+func (f serverOptionFunc) apply(s *Server) {
+	f(s)
 }
 
 // DefaultReadTimeout is the default duration for reading the entire
@@ -22,9 +22,9 @@ const DefaultReadTimeout = time.Millisecond * 100
 
 // WithReadTimeout set the maximum duration for reading the entire
 // request, including the body.
-func WithReadTimeout(timeout time.Duration) ServerOption {
-	return serverOptionFunc(func(server *Server) {
-		server.srv.ReadTimeout = timeout
+func WithReadTimeout(timeout time.Duration) Option {
+	return serverOptionFunc(func(s *Server) {
+		s.srv.ReadTimeout = timeout
 	})
 }
 
@@ -34,9 +34,9 @@ const DefaultReadHeaderTimeout = time.Millisecond * 100
 
 // WithReadHeaderTimeout set the amount of time allowed to read
 // request headers.
-func WithReadHeaderTimeout(timeout time.Duration) ServerOption {
-	return serverOptionFunc(func(server *Server) {
-		server.srv.ReadHeaderTimeout = timeout
+func WithReadHeaderTimeout(timeout time.Duration) Option {
+	return serverOptionFunc(func(s *Server) {
+		s.srv.ReadHeaderTimeout = timeout
 	})
 }
 
@@ -46,9 +46,9 @@ const DefaultWriteTimeout = time.Millisecond * 100
 
 // WithWriteTimeout set the maximum duration before timing out
 // writes of the response.
-func WithWriteTimeout(timeout time.Duration) ServerOption {
-	return serverOptionFunc(func(server *Server) {
-		server.srv.WriteTimeout = timeout
+func WithWriteTimeout(timeout time.Duration) Option {
+	return serverOptionFunc(func(s *Server) {
+		s.srv.WriteTimeout = timeout
 	})
 }
 
@@ -58,9 +58,9 @@ const DefaultIdleTimeout = time.Millisecond * 100
 
 // WithIdleTimeout set the maximum amount of time to wait for the
 // next request when keep-alives are enabled.
-func WithIdleTimeout(timeout time.Duration) ServerOption {
-	return serverOptionFunc(func(server *Server) {
-		server.srv.IdleTimeout = timeout
+func WithIdleTimeout(timeout time.Duration) Option {
+	return serverOptionFunc(func(s *Server) {
+		s.srv.IdleTimeout = timeout
 	})
 }
 
@@ -72,17 +72,17 @@ const DefaultMaxHeaderBytes = http.DefaultMaxHeaderBytes
 // WithMaxHeaderBytes set the maximum number of bytes the
 // server will read parsing the request header's keys and
 // values, including the request line.
-func WithMaxHeaderBytes(bytes int) ServerOption {
-	return serverOptionFunc(func(server *Server) {
-		server.srv.MaxHeaderBytes = bytes
+func WithMaxHeaderBytes(bytes int) Option {
+	return serverOptionFunc(func(s *Server) {
+		s.srv.MaxHeaderBytes = bytes
 	})
 }
 
 // WithHandler append specified sub-router to server's super-router
 // by pattern. It is allow to hide server's router interface from
 // public usage.
-func WithHandler(pattern string, handler http.Handler) ServerOption {
-	return serverOptionFunc(func(server *Server) {
-		server.router.Mount(pattern, handler)
+func WithHandler(pattern string, handler http.Handler) Option {
+	return serverOptionFunc(func(s *Server) {
+		s.router.Mount(pattern, handler)
 	})
 }

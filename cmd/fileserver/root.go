@@ -1,4 +1,4 @@
-package cmd
+package main
 
 import (
 	"context"
@@ -9,7 +9,7 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/morozovcookie/atlant/http"
+	"github.com/morozovcookie/atlant/http/server"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 	"go.uber.org/zap"
@@ -17,11 +17,11 @@ import (
 )
 
 var (
-	ErrEmptyHostFlagPath = errors.New("empty host flag")
-	ErrInvalidHostValue  = errors.New("invalid host value")
-	ErrEmptyDirPathFlag  = errors.New("empty dirpath flag")
-	ErrFileDoesNotExist  = errors.New("file does not exist")
-	ErrNotDir            = errors.New("specified file is not a directory")
+	ErrEmptyHostFlag    = errors.New("empty host flag")
+	ErrInvalidHostValue = errors.New("invalid host value")
+	ErrEmptyDirPathFlag = errors.New("empty dirpath flag")
+	ErrFileDoesNotExist = errors.New("file does not exist")
+	ErrNotDir           = errors.New("specified file is not a directory")
 )
 
 const (
@@ -31,20 +31,17 @@ const (
 )
 
 type Flag interface {
-	ValidateFlag() (err error)
+	Validate() (err error)
 }
 
 type HostFlag string
 
-func (f *HostFlag) ValidateFlag() (err error) {
+func (f *HostFlag) Validate() (err error) {
 	if f.String() == "" {
-		return ErrEmptyHostFlagPath
+		return ErrEmptyHostFlag
 	}
 
-	r, err := regexp.Compile(`^(((\d{1,3}\.){3}(\d{1,3}))|((\w+\.){2}(\w+))):(\d{4,5})$`)
-	if err != nil {
-		return err
-	}
+	r := regexp.MustCompile(`^(((\d{1,3}\.){3}(\d{1,3}))|((\w+\.){2}(\w+))):(\d{4,5})$`)
 
 	if !r.MatchString(f.String()) {
 		return errors.New(ErrInvalidHostValue.Error() + ": " + f.String())
@@ -53,8 +50,8 @@ func (f *HostFlag) ValidateFlag() (err error) {
 	return nil
 }
 
-func (f *HostFlag) String() (s string) {
-	return (string)(*f)
+func (f HostFlag) String() (s string) {
+	return (string)(f)
 }
 
 func (f *HostFlag) Pointer() (p *string) {
@@ -63,7 +60,7 @@ func (f *HostFlag) Pointer() (p *string) {
 
 type DirPathFlag string
 
-func (f *DirPathFlag) ValidateFlag() (err error) {
+func (f *DirPathFlag) Validate() (err error) {
 	if f.String() == "" {
 		return ErrEmptyDirPathFlag
 	}
@@ -97,7 +94,7 @@ type RootCommandOptions struct {
 
 func (opts *RootCommandOptions) Validate() (err error) {
 	for _, f := range []Flag{opts.host, opts.dirPath} {
-		if err = f.ValidateFlag(); err != nil {
+		if err = f.Validate(); err != nil {
 			return err
 		}
 	}
@@ -106,8 +103,8 @@ func (opts *RootCommandOptions) Validate() (err error) {
 }
 
 func (opts *RootCommandOptions) Run() (err error) {
-	s := http.NewServer(opts.host.String(),
-		http.WithHandler(FileServerHandlerPattern, stdhttp.FileServer(stdhttp.Dir(opts.dirPath.String()))))
+	s := server.New(opts.host.String(),
+		server.WithHandler(FileServerHandlerPattern, stdhttp.FileServer(stdhttp.Dir(opts.dirPath.String()))))
 
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
@@ -131,7 +128,7 @@ func (opts *RootCommandOptions) Run() (err error) {
 	return eg.Wait()
 }
 
-func NewRootCommand(logger *zap.Logger) (c *cobra.Command) {
+func cmdRoot(logger *zap.Logger) (c *cobra.Command) {
 	opts := &RootCommandOptions{
 		host:    new(HostFlag),
 		dirPath: new(DirPathFlag),
