@@ -16,7 +16,7 @@ func (f producerOptionFunc) apply(p *Producer) {
 }
 
 //
-func WithServers(servers string) Option {
+func WithServers(servers []string) Option {
 	return producerOptionFunc(func(p *Producer) {
 		p.servers = servers
 	})
@@ -40,12 +40,12 @@ func WithPartition(partition int32) Option {
 }
 
 const (
-	NoWaitAcknowledgement     int = 0
-	WaitLeaderAcknowledgement int = 1
-	WaitAllAcknowledgement    int = -1
+	AcknowledgementNoWait     int = 0
+	AcknowledgementWaitLeader int = 1
+	AcknowledgementWaitAll    int = -1
 )
 
-const DefaultAcknowledgement = WaitLeaderAcknowledgement
+const DefaultAcknowledgement = AcknowledgementWaitLeader
 
 //
 func WithAcknowledgement(acks int) Option {
@@ -62,11 +62,11 @@ func WithTransactionalID(id string) Option {
 }
 
 const (
-	DisabledIdempotenceState bool = false
-	EnabledIdempotenceState  bool = true
+	IdempotenceDisabledState bool = false
+	IdempotenceEnabledState  bool = true
 )
 
-const DefaultIdempotenceState = DisabledIdempotenceState
+const DefaultIdempotenceState = IdempotenceDisabledState
 
 //
 func WithIdempotenceState(state bool) Option {
@@ -90,5 +90,22 @@ const DefaultRetries = 10000000
 func WithRetries(retries int) Option {
 	return producerOptionFunc(func(p *Producer) {
 		p.retries = retries
+	})
+}
+
+const (
+	CompressionTypeNone   string = "none"
+	CompressionTypeGzip   string = "gzip"
+	CompressionTypeSnappy string = "snappy"
+	CompressionTypeLz4    string = "lz4"
+	CompressionTypeZstd   string = "zstd"
+)
+
+const DefaultCompressionType string = CompressionTypeNone
+
+//
+func WithCompressionType(t string) Option {
+	return producerOptionFunc(func(p *Producer) {
+		p.compressionType = t
 	})
 }

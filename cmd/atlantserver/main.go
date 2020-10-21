@@ -84,9 +84,10 @@ func initContainer(cfg *config.Config, logger *zap.Logger) (c *svcV1.Container, 
 		logger.With(zap.String("component", "product_producer")),
 		producer.WithServers(cfg.KafkaProductProducerConfig.Servers),
 		producer.WithTopic(cfg.KafkaProductProducerConfig.Topic),
-		producer.WithAcknowledgement(producer.WaitAllAcknowledgement),
+		producer.WithAcknowledgement(producer.AcknowledgementWaitAll),
 		producer.WithTransactionalID("atlantserver"+cfg.Hostname),
-		producer.WithIdempotenceState(producer.EnabledIdempotenceState))
+		producer.WithIdempotenceState(producer.IdempotenceEnabledState),
+		producer.WithCompressionType(producer.CompressionTypeGzip))
 	if err != nil {
 		logger.Error("create producer error", zap.Error(err))
 

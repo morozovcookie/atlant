@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"io"
+	"strings"
 
 	"github.com/confluentinc/confluent-kafka-go/kafka"
 	"go.uber.org/zap"
@@ -27,19 +28,22 @@ type Producer struct {
 	retries int
 
 	//
-	kp *kafka.Producer
-
-	//
-	logger *zap.Logger
-
-	//
-	servers string
-
-	//
 	topic string
 
 	//
 	transactionalID string
+
+	//
+	compressionType string
+
+	//
+	servers []string
+
+	//
+	kp *kafka.Producer
+
+	//
+	logger *zap.Logger
 }
 
 //
@@ -59,12 +63,13 @@ func New(logger *zap.Logger, opts ...Option) (p *Producer, err error) {
 	}
 
 	p.kp, err = kafka.NewProducer(&kafka.ConfigMap{
-		"bootstrap.servers":                     p.servers,
-		"acks":                                  p.acks,
-		"transactional.id":                      p.transactionalID,
 		"enable.idempotence":                    p.idempotenceState,
+		"acks":                                  p.acks,
 		"max.in.flight.requests.per.connection": p.maxInFlightRequestsPerConnection,
 		"retries":                               p.retries,
+		"transactional.id":                      p.transactionalID,
+		"compression.type":                      p.compressionType,
+		"bootstrap.servers":                     strings.Join(p.servers, ","),
 	})
 	if err != nil {
 		return nil, err
