@@ -65,41 +65,41 @@ func (ps *MockProductStorer) Store(ctx context.Context, pp ...Product) (err erro
 	return ps.Called(ctx, pp).Error(0)
 }
 
-type StartParameter int
+type StartParameter int64
 
-func NewStartParameter(val int) (p StartParameter) {
+func NewStartParameter(val int64) (p StartParameter) {
 	return StartParameter(val)
 }
 
-func (p StartParameter) Int() (val int) {
-	return (int)(p)
+func (p StartParameter) Int64() (val int64) {
+	return (int64)(p)
 }
 
-const MinStartParameterValue int = 0
+const MinStartParameterValue int64 = 0
 
 var ErrInvalidStartParameterValue = errors.New(`"start" value should be greater or equal zero`)
 
 func (p StartParameter) Validate() (err error) {
-	if p.Int() < MinStartParameterValue {
+	if p.Int64() < MinStartParameterValue {
 		return ErrInvalidStartParameterValue
 	}
 
 	return nil
 }
 
-type LimitParameter int
+type LimitParameter int64
 
-func NewLimitParameter(val int) (p LimitParameter) {
+func NewLimitParameter(val int64) (p LimitParameter) {
 	return LimitParameter(val)
 }
 
-func (p LimitParameter) Int() (val int) {
-	return (int)(p)
+func (p LimitParameter) Int64() (val int64) {
+	return (int64)(p)
 }
 
 const (
-	MinLimitParameterValue int = 1
-	MaxLimitParameterValue int = 100
+	MinLimitParameterValue int64 = 1
+	MaxLimitParameterValue int64 = 100
 )
 
 var (
@@ -108,11 +108,11 @@ var (
 )
 
 func (p LimitParameter) Validate() (err error) {
-	if p.Int() < MinLimitParameterValue {
+	if p.Int64() < MinLimitParameterValue {
 		return ErrInvalidLimitParameterMinValue
 	}
 
-	if p.Int() > MaxLimitParameterValue {
+	if p.Int64() > MaxLimitParameterValue {
 		return ErrInvalidLimitParameterMaxValue
 	}
 

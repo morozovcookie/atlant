@@ -15,7 +15,7 @@ import (
 //
 type Product struct {
 	//
-	UpdatedCount *int `bson:"updated_count"`
+	UpdateCount *int `bson:"update_count"`
 
 	//
 	CreatedAt int64 `bson:"created_at"`
@@ -74,8 +74,8 @@ func (ps *ProductStorage) Store(ctx context.Context, pp ...atlant.Product) (err 
 	)
 
 	if p.UpdateCount != 0 {
-		mp.UpdatedCount = new(int)
-		*(mp.UpdatedCount) = p.UpdateCount
+		mp.UpdateCount = new(int)
+		*(mp.UpdateCount) = p.UpdateCount
 	}
 
 	if p.UpdatedAt.UnixNano() != 0 {
@@ -112,8 +112,8 @@ func (ps *ProductStorage) GetByProductID(ctx context.Context, productID string) 
 		CreatedAt: time.Unix(0, mp.CreatedAt),
 	}
 
-	if mp.UpdatedCount != nil {
-		p.UpdateCount = *(mp.UpdatedCount)
+	if mp.UpdateCount != nil {
+		p.UpdateCount = *(mp.UpdateCount)
 	}
 
 	if mp.UpdatedAt != nil {
@@ -133,5 +133,82 @@ func (ps *ProductStorage) List(
 	pp []atlant.Product,
 	err error,
 ) {
-	return nil, nil
+	var (
+		mdbOpts = options.
+			Find().
+			SetSkip(start.Int64()).
+			SetLimit(limit.Int64())
+		sort = bson.D{}
+
+		fromDomainFieldToMongoFieldMap = map[atlant.SortingField]string{
+			"name":         "name",
+			"price":        "price",
+			"created_at":   "created_at",
+			"updated_at":   "updated_at",
+			"update_count": "update_count",
+		}
+
+		fromDomainSortingDirectionToMongoSortingDirection = map[atlant.SortingDirection]int{
+			atlant.SortingDirectionAsc:  1,
+			atlant.SortingDirectionDesc: -1,
+		}
+	)
+
+	for _, opt := range opts {
+		sort = append(sort, bson.E{
+			Key:   fromDomainFieldToMongoFieldMap[opt.Field],
+			Value: fromDomainSortingDirectionToMongoSortingDirection[opt.Direction],
+		})
+	}
+
+	rows, err := ps.products.Find(ctx, bson.D{}, mdbOpts.SetSort(sort))
+	if err != nil {
+		return nil, err
+	}
+
+	defer func(ctx context.Context, logger *zap.Logger) {
+		if closeErr := rows.Close(ctx); closeErr != nil {
+			logger.Error("close cursor error", zap.Error(err))
+			err = closeErr
+		}
+	}(ctx, ps.logger)
+
+	pp = make([]atlant.Product, limit.Int64(), 0)
+
+	var (
+		i = 0
+
+		p  atlant.Product
+		mp Product
+	)
+
+	for rows.Next(ctx) {
+		if err = rows.Decode(&mp); err != nil {
+			return nil, err
+		}
+
+		p = atlant.Product{
+			Price:     mp.Price,
+			Name:      mp.Name,
+			CreatedAt: time.Unix(0, mp.CreatedAt),
+		}
+
+		if mp.UpdateCount != nil {
+			p.UpdateCount = *(mp.UpdateCount)
+		}
+
+		if mp.UpdatedAt != nil {
+			p.UpdatedAt = time.Unix(0, *(mp.UpdatedAt))
+		}
+
+		pp = append(pp, p)
+
+		i++
+	}
+
+	if err = rows.Err(); err != nil {
+		return nil, err
+	}
+
+	return pp[:i], nil
 }

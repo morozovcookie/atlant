@@ -77,8 +77,8 @@ func (s *AtlantService) List(ctx context.Context, req *ListRequest) (res *ListRe
 			ListRequest_SortingOption_SORTING_OPTION_DESC.String():        atlant.SortingDirectionDesc,
 		}
 
-		start    = atlant.NewStartParameter(int(req.Start))
-		limit    = atlant.NewLimitParameter(int(req.Limit))
+		start    = atlant.NewStartParameter(req.Start)
+		limit    = atlant.NewLimitParameter(req.Limit)
 		sortOpts = make(atlant.ProductSortingOptions, len(req.Options))
 	)
 
@@ -97,10 +97,20 @@ func (s *AtlantService) List(ctx context.Context, req *ListRequest) (res *ListRe
 	}{start, limit, sortOpts} {
 		err = p.Validate()
 
+		if stderrors.Is(atlant.ErrInvalidLimitParameterMinValue, err) && req.Limit == 0 {
+			s.logger.Warn(`"limit" value less than min value - it will be set to 100`)
+
+			limit = atlant.NewLimitParameter(atlant.MaxLimitParameterValue)
+
+			continue
+		}
+
 		if stderrors.Is(atlant.ErrInvalidLimitParameterMaxValue, err) {
 			s.logger.Warn(`"limit" value more than max value - it will be set to 100`)
 
 			limit = atlant.NewLimitParameter(atlant.MaxLimitParameterValue)
+
+			continue
 		}
 
 		if err != nil {
