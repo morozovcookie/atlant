@@ -2,6 +2,11 @@ package main
 
 import (
 	"context"
+	"log"
+	"os"
+	"os/signal"
+	"syscall"
+
 	"github.com/morozovcookie/atlant/cmd/processor/config"
 	"github.com/morozovcookie/atlant/kafka/consumer"
 	v1 "github.com/morozovcookie/atlant/kafka/v1"
@@ -9,10 +14,6 @@ import (
 	_ "go.uber.org/automaxprocs"
 	"go.uber.org/zap"
 	"golang.org/x/sync/errgroup"
-	"log"
-	"os"
-	"os/signal"
-	"syscall"
 )
 
 const (

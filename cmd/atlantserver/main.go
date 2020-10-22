@@ -43,11 +43,6 @@ func main() {
 		logger.Fatal("create producer error", zap.Error(err))
 	}
 
-	if err = p.InitTransactions(context.Background()); err != nil {
-		p.Close(context.Background())
-		logger.Fatal("init transactions error", zap.Error(err))
-	}
-
 	var s *grpc.Server
 	{
 		c := initContainer(p, logger)
@@ -106,7 +101,7 @@ func initContainer(p kafkaV1.Producer, logger *zap.Logger) (c *svcV1.Container) 
 }
 
 func initProducer(cfg *config.Config, logger *zap.Logger) (p *producer.Producer, err error) {
-	return producer.New(
+	p, err = producer.New(
 		logger.With(zap.String("component", "product_producer")),
 		producer.WithServers(cfg.KafkaProductProducerConfig.Servers),
 		producer.WithTopic("docker.atlant.cdc.products.0"),
@@ -114,4 +109,15 @@ func initProducer(cfg *config.Config, logger *zap.Logger) (p *producer.Producer,
 		producer.WithTransactionalID(appname+"-"+cfg.Hostname),
 		producer.WithIdempotenceState(producer.IdempotenceEnabledState),
 		producer.WithCompressionType(producer.CompressionTypeGzip))
+	if err != nil {
+		return nil, err
+	}
+
+	if err = p.InitTransactions(context.Background()); err != nil {
+		p.Close(context.Background())
+
+		return nil, err
+	}
+
+	return p, nil
 }

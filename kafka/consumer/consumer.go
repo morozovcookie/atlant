@@ -4,11 +4,12 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"io"
+	"strings"
+
 	confluent "github.com/confluentinc/confluent-kafka-go/kafka"
 	"github.com/morozovcookie/atlant/kafka"
 	"go.uber.org/zap"
-	"io"
-	"strings"
 )
 
 //
@@ -95,20 +96,19 @@ func (c *Consumer) Subscribe(cb func(r io.Reader) (err error)) (err error) {
 		}
 
 		msg, err := c.kc.ReadMessage(0)
+		if isFatalError(err) {
+			c.logger.Error("consumer fatal error", zap.Error(err))
+
+			return err
+		}
+
+		if isTimeoutError(err) {
+			continue
+		}
+
 		if err != nil {
-			if kerr, ok := err.(confluent.Error); ok {
-				if kerr.IsFatal() {
-					c.logger.Error("consumer fatal error", zap.Error(err))
-
-					return err
-				}
-
-				if kerr.Code() == confluent.ErrTimedOut {
-					continue
-				}
-			}
-
 			c.logger.Error("read message error", zap.Error(err))
+
 			continue
 		}
 
@@ -132,4 +132,24 @@ func (c *Consumer) Subscribe(cb func(r io.Reader) (err error)) (err error) {
 			}
 		}
 	}
+}
+
+func isFatalError(err error) (isFatal bool) {
+	if err == nil {
+		return false
+	}
+
+	kerr, ok := err.(confluent.Error)
+
+	return ok && kerr.IsFatal()
+}
+
+func isTimeoutError(err error) (isTimeout bool) {
+	if err == nil {
+		return false
+	}
+
+	kerr, ok := err.(confluent.Error)
+
+	return ok && kerr.Code() == confluent.ErrTimedOut
 }
