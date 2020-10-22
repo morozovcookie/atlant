@@ -36,15 +36,15 @@ func (s *ProductStorer) Store(ctx context.Context, pp ...atlant.Product) (err er
 		return err
 	}
 
-	func(ctx context.Context, err error, logger *zap.Logger) {
-		if err == nil {
+	defer func(ctx context.Context, err *error, logger *zap.Logger) {
+		if *err == nil {
 			return
 		}
 
 		if abortErr := s.producer.AbortTransaction(ctx); abortErr != nil {
 			logger.Error("error while aborting transaction: ", zap.Error(abortErr))
 		}
-	}(ctx, err, s.logger)
+	}(ctx, &err, s.logger)
 
 	for _, p := range pp {
 		var (
