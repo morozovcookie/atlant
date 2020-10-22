@@ -92,10 +92,10 @@ func (ps *ProductStorage) Store(ctx context.Context, pp ...atlant.Product) (err 
 }
 
 //
-func (ps *ProductStorage) GetByID(ctx context.Context, id string) (p *atlant.Product, err error) {
+func (ps *ProductStorage) GetByProductID(ctx context.Context, productID string) (p *atlant.Product, err error) {
 	var (
 		mp     = &Product{}
-		filter = bson.D{{Key: "product_id", Value: id}}
+		filter = bson.D{{Key: "product_id", Value: productID}}
 	)
 
 	if err = ps.products.FindOne(ctx, filter).Decode(&mp); err != nil {

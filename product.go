@@ -244,7 +244,7 @@ type ProductStorage interface {
 	ProductStorer
 
 	//
-	GetByID(ctx context.Context, id string) (p Product, err error)
+	GetByProductID(ctx context.Context, productID string) (p *Product, err error)
 }
 
 type MockProductStorage struct {
@@ -255,8 +255,8 @@ func (ps *MockProductStorage) Store(ctx context.Context, pp ...Product) (err err
 	return ps.Called(ctx, pp).Error(0)
 }
 
-func (ps *MockProductStorage) GetByID(ctx context.Context, id string) (p Product, err error) {
-	args := ps.Called(ctx, id)
+func (ps *MockProductStorage) GetByProductID(ctx context.Context, productID string) (p *Product, err error) {
+	args := ps.Called(ctx, productID)
 
-	return args.Get(0).(Product), args.Error(1)
+	return args.Get(0).(*Product), args.Error(1)
 }
