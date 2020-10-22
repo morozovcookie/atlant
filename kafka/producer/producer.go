@@ -95,18 +95,30 @@ func (p *Producer) AbortTransaction(ctx context.Context) (err error) {
 
 //
 func (p *Producer) Produce(_ context.Context, msg io.Reader) (err error) {
-	buf := &bytes.Buffer{}
+	var (
+		buf = &bytes.Buffer{}
+		ch  = make(chan kafka.Event, 1)
+	)
+
 	if _, err = io.Copy(buf, msg); err != nil {
 		return err
 	}
 
-	return p.kp.Produce(&kafka.Message{
+	err = p.kp.Produce(&kafka.Message{
 		TopicPartition: kafka.TopicPartition{
 			Topic:     &p.topic,
 			Partition: p.partition,
 		},
 		Value: buf.Bytes(),
-	}, nil)
+	}, ch)
+	if err != nil {
+		return err
+	}
+
+	// I need do this stuff, cause only in this case we can catch error, when partition does not exists. The reason of
+	// this behaviour is because kafka.Produce() - async method. Without this synchronization we did not get any error
+	// even when we try to commit transaction.
+	return ((<-ch).(*kafka.Message)).TopicPartition.Error
 }
 
 //
