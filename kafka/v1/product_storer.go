@@ -19,7 +19,7 @@ type ProductStorer struct {
 }
 
 //
-func NewProductStorer(producer Producer, logger *zap.Logger) *ProductStorer {
+func NewProductStorer(producer Producer, logger *zap.Logger) (ps *ProductStorer) {
 	return &ProductStorer{
 		producer: producer,
 		logger:   logger,
@@ -30,10 +30,6 @@ func NewProductStorer(producer Producer, logger *zap.Logger) *ProductStorer {
 func (s *ProductStorer) Store(ctx context.Context, pp ...atlant.Product) (err error) {
 	if len(pp) == 0 {
 		return nil
-	}
-
-	if err = s.producer.InitTransactions(ctx); err != nil {
-		return err
 	}
 
 	if err = s.producer.BeginTransaction(ctx); err != nil {

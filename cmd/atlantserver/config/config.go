@@ -8,9 +8,6 @@ import (
 type KafkaProductProducerConfig struct {
 	//
 	Servers []string `env:"KAFKA_PRODUCT_PRODUCER_SERVERS"`
-
-	//
-	Topic string `env:"KAFKA_PRODUCT_PRODUCER_TOPIC"`
 }
 
 //

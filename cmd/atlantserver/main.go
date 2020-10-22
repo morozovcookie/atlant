@@ -15,6 +15,7 @@ import (
 	"github.com/morozovcookie/atlant/kafka/producer"
 	kafkaV1 "github.com/morozovcookie/atlant/kafka/v1"
 	"github.com/morozovcookie/atlant/time"
+	_ "go.uber.org/automaxprocs"
 	"go.uber.org/zap"
 	"golang.org/x/sync/errgroup"
 	ggrpc "google.golang.org/grpc"
@@ -40,6 +41,11 @@ func main() {
 	p, err := initProducer(cfg, logger)
 	if err != nil {
 		logger.Fatal("create producer error", zap.Error(err))
+	}
+
+	if err = p.InitTransactions(context.Background()); err != nil {
+		p.Close(context.Background())
+		logger.Fatal("init transactions error", zap.Error(err))
 	}
 
 	var s *grpc.Server
@@ -77,7 +83,7 @@ func main() {
 	s.Stop()
 
 	if err = eg.Wait(); err != nil {
-		logger.Error(err.Error())
+		logger.Error("stopping application error", zap.Error(err))
 	}
 
 	logger.Info("application stopped")
@@ -103,7 +109,7 @@ func initProducer(cfg *config.Config, logger *zap.Logger) (p *producer.Producer,
 	return producer.New(
 		logger.With(zap.String("component", "product_producer")),
 		producer.WithServers(cfg.KafkaProductProducerConfig.Servers),
-		producer.WithTopic(cfg.KafkaProductProducerConfig.Topic),
+		producer.WithTopic("docker.atlant.cdc.products.0"),
 		producer.WithAcknowledgement(producer.AcknowledgementWaitAll),
 		producer.WithTransactionalID(appname+"-"+cfg.Hostname),
 		producer.WithIdempotenceState(producer.IdempotenceEnabledState),
