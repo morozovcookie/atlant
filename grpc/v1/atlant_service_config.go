@@ -14,6 +14,9 @@ type AtlantServiceConfig interface {
 	ProductStorerInstance() atlant.ProductStorer
 
 	//
+	ProductListerInstance() atlant.ProductLister
+
+	//
 	ClockInstance() Clock
 }
 
@@ -27,6 +30,10 @@ func (c *MockAtlantServiceConfig) ProductFetcherInstance() atlant.ProductFetcher
 
 func (c *MockAtlantServiceConfig) ProductStorerInstance() atlant.ProductStorer {
 	return c.Called().Get(0).(atlant.ProductStorer)
+}
+
+func (c *MockAtlantServiceConfig) ProductListerInstance() atlant.ProductLister {
+	return c.Called().Get(0).(atlant.ProductLister)
 }
 
 func (c *MockAtlantServiceConfig) ClockInstance() Clock {

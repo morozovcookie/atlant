@@ -122,3 +122,16 @@ func (ps *ProductStorage) GetByID(ctx context.Context, id string) (p *atlant.Pro
 
 	return p, nil
 }
+
+//
+func (ps *ProductStorage) List(
+	ctx context.Context,
+	start atlant.StartParameter,
+	limit atlant.LimitParameter,
+	opts atlant.ProductSortingOptions,
+) (
+	pp []atlant.Product,
+	err error,
+) {
+	return nil, nil
+}

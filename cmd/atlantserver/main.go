@@ -14,6 +14,7 @@ import (
 	"github.com/morozovcookie/atlant/http/client"
 	"github.com/morozovcookie/atlant/kafka/producer"
 	kafkaV1 "github.com/morozovcookie/atlant/kafka/v1"
+	"github.com/morozovcookie/atlant/mongodb"
 	"github.com/morozovcookie/atlant/time"
 	_ "go.uber.org/automaxprocs"
 	"go.uber.org/zap"
@@ -43,12 +44,15 @@ func main() {
 		logger.Fatal("create producer error", zap.Error(err))
 	}
 
+	mc, err := initMongoDB(cfg)
+	if err != nil {
+		logger.Fatal("create mongodb client error", zap.Error(err))
+	}
+
 	var s *grpc.Server
 	{
-		c := initContainer(p, logger)
-
 		atlantSvc := svcV1.NewAtlantService(
-			c,
+			initContainer(p, mc, logger),
 			logger.With(zap.String("component", "atlant_service")))
 
 		s = grpc.NewServer(
@@ -77,6 +81,10 @@ func main() {
 
 	s.Stop()
 
+	if err = mc.Close(context.Background()); err != nil {
+		logger.Error("mongodb client close error", zap.Error(err))
+	}
+
 	if err = eg.Wait(); err != nil {
 		logger.Error("stopping application error", zap.Error(err))
 	}
@@ -84,7 +92,7 @@ func main() {
 	logger.Info("application stopped")
 }
 
-func initContainer(p kafkaV1.Producer, logger *zap.Logger) (c *svcV1.Container) {
+func initContainer(p kafkaV1.Producer, mc mongodb.MongoCollector, logger *zap.Logger) (c *svcV1.Container) {
 	c = &svcV1.Container{
 		Clock: time.NewClock(),
 	}
@@ -96,6 +104,10 @@ func initContainer(p kafkaV1.Producer, logger *zap.Logger) (c *svcV1.Container) 
 	c.ProductStorer = kafkaV1.NewProductStorer(
 		p,
 		logger.With(zap.String("component", "product_storer")))
+
+	c.ProductLister = mongodb.NewProductStorage(
+		mc,
+		logger.With(zap.String("component", "product_lister")))
 
 	return c
 }
@@ -120,4 +132,17 @@ func initProducer(cfg *config.Config, logger *zap.Logger) (p *producer.Producer,
 	}
 
 	return p, nil
+}
+
+func initMongoDB(cfg *config.Config) (mc *mongodb.Client, err error) {
+	mc = mongodb.NewClient(
+		mongodb.WithURI(cfg.MongoDBConfig.URI),
+		mongodb.WithDatabase("atlant"),
+		mongodb.WithCollection("products"))
+
+	if err = mc.Connect(context.Background()); err != nil {
+		return nil, err
+	}
+
+	return mc, nil
 }

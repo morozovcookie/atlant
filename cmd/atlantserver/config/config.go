@@ -17,11 +17,18 @@ type RPCServerConfig struct {
 }
 
 //
+type MongoDBConfig struct {
+	//
+	URI string `env:"MONGODB_URI"`
+}
+
+//
 type Config struct {
 	Hostname string `env:"HOSTNAME"`
 
 	KafkaProductProducerConfig
 	RPCServerConfig
+	MongoDBConfig
 }
 
 //
@@ -36,6 +43,10 @@ func (c *Config) Parse() (err error) {
 	}
 
 	if err = env.Parse(&c.RPCServerConfig); err != nil {
+		return err
+	}
+
+	if err = env.Parse(&c.MongoDBConfig); err != nil {
 		return err
 	}
 
