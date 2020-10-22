@@ -173,7 +173,7 @@ func (ps *ProductStorage) List(
 		}
 	}(ctx, ps.logger)
 
-	pp = make([]atlant.Product, limit.Int64(), 0)
+	pp = make([]atlant.Product, 0, limit.Int64())
 
 	var (
 		i = 0
