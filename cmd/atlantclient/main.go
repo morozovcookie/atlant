@@ -4,6 +4,7 @@ import (
 	"log"
 
 	"github.com/spf13/cobra"
+	_ "go.uber.org/automaxprocs"
 	"go.uber.org/zap"
 )
 
