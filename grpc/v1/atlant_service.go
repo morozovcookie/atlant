@@ -41,7 +41,7 @@ func NewAtlantService(config AtlantServiceConfig, logger *zap.Logger) *AtlantSer
 func (s *AtlantService) Fetch(ctx context.Context, r *FetchRequest) (_ *empty.Empty, err error) {
 	reqRecvT := s.clock.NowInUTC()
 
-	u, err := url.Parse(r.URL)
+	u, err := url.Parse(r.Url)
 	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
@@ -58,4 +58,9 @@ func (s *AtlantService) Fetch(ctx context.Context, r *FetchRequest) (_ *empty.Em
 	}
 
 	return &empty.Empty{}, nil
+}
+
+//
+func (s *AtlantService) List(ctx context.Context, req *ListRequest) (res *ListResponse, err error) {
+	return nil, nil
 }

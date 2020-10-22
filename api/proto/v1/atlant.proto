@@ -7,9 +7,42 @@ import "google/protobuf/empty.proto";
 option go_package = ".;v1";
 
 message FetchRequest {
-  string URL = 1;
+  string url = 1;
+}
+
+message ListRequest {
+  int32 start = 1;
+  int32 limit = 2;
+
+  message SortingOption {
+    string field = 1;
+
+    enum SortingOptionDirection {
+      SORTING_OPTION_UNSPECIFIED = 0;
+      SORTING_OPTION_ASC         = 1;
+      SORTING_OPTION_DESC        = 2;
+    }
+
+    SortingOptionDirection direction = 2;
+  }
+
+  repeated SortingOption options = 3;
+}
+
+message ListResponse {
+  message Product {
+    string name        = 1;
+    double price       = 2;
+    int64 created_at   = 3;
+    int64 updated_at   = 4;
+    int64 update_count = 5;
+  }
+
+  repeated Product products = 1;
 }
 
 service AtlantService {
-  rpc Fetch(FetchRequest) returns(google.protobuf.Empty);
+  rpc Fetch(FetchRequest) returns (google.protobuf.Empty);
+
+  rpc List(ListRequest) returns (ListResponse);
 }

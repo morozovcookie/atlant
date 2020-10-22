@@ -38,6 +38,8 @@ Here is list of some features that could be implemented in the future:
 - [ ] Metrics
 - [ ] Liveness/Readiness probes
 - [ ] Producer and consumer compression
+- [ ] CI/CD
+- [ ] GitHub Actions
 
 # Credits
 

@@ -105,7 +105,7 @@ func (opts *FetchCommandOptions) Run(ctx context.Context, logger *zap.Logger) (e
 	_, err = svc.Fetch(
 		ctx,
 		&v1.FetchRequest{
-			URL: opts.url.String(),
+			Url: opts.url.String(),
 		})
 	if err != nil {
 		return err
