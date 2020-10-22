@@ -6,7 +6,11 @@ GOOS        ?= linux
 GOARCH      ?= amd64
 GOFLAGS      = CGO_ENABLED=$(CGO_ENABLED) GOOS=$(GOOS) GOARCH=$(GOARCH)
 
-GOBUILD_TARGET = atlantserver
+MONGODB_HOST            ?= 127.0.0.1
+MONGODB_PORT            ?= 27017
+MONGODB_DATABASE        ?= atlant
+MONGODB_DATABASE_URL     = mongodb://$(MONGODB_HOST):$(MONGODB_PORT)/$(MONGODB_DATABASE)
+MONGODB_MIGRATIONS_PATH ?= $(CURRENT_DIR)/migrations
 
 
 # Download dependencies.
@@ -54,14 +58,46 @@ run:
 docker-build:
 	@echo "+ $@"
 
-# Build the binary.
+# Build the binaries.
 .PHONY: go-build
-go-build:
+go-build: atlantserver-build atlantclient-build csvgen-build fileserver-build
+	@echo "+ $@"
+
+# Build the binaries.
+.PHONY: atlantserver-build
+atlantserver-build:
 	@echo "+ $@"
 	@$(GOFLAGS) go build \
 		-ldflags "-s -w" \
-		-o $(CURRENT_DIR)/out/$(GOBUILD_TARGET) \
+		-o $(CURRENT_DIR)/out/atlantserver \
 		$(CURRENT_DIR)/cmd/atlantserver/main.go
+
+# Build the binaries.
+.PHONY: atlantclient-build
+atlantclient-build:
+	@echo "+ $@"
+	@$(GOFLAGS) go build \
+		-ldflags "-s -w" \
+		-o $(CURRENT_DIR)/out/atlantclient \
+		$(CURRENT_DIR)/cmd/atlantclient/main.go
+
+# Build the csvgen binary.
+.PHONY: csvgen-build
+csvgen-build:
+	@echo "+ $@"
+	@$(GOFLAGS) go build \
+		-ldflags "-s -w" \
+		-o $(CURRENT_DIR)/out/csvgen \
+		$(CURRENT_DIR)/cmd/csvgen/main.go
+
+# Build the fileserver binary.
+.PHONY: fileserver-build
+fileserver-build:
+	@echo "+ $@"
+	@$(GOFLAGS) go build \
+		-ldflags "-s -w" \
+		-o $(CURRENT_DIR)/out/fileserver \
+		$(CURRENT_DIR)/cmd/fileserver/main.go
 
 # Build the application with werf.
 .PHONY: werf-build
@@ -73,3 +109,40 @@ werf-build:
 clear:
 	@echo "+ $@"
 	@rm -rf $(CURRENT_DIR)/out
+
+# Generate go-files from proto
+.PHONY: protoc
+protoc:
+	@echo "+ $@"
+	@protoc \
+		--proto_path=api/proto/v1 \
+		--proto_path=third_party \
+		--gogofaster_out=plugins=grpc:grpc/v1 \
+		atlant.proto
+
+# Up migrations
+.PHONY: migrate-up
+migrate-up:
+	@echo "+ $@"
+	@migrate \
+		-database $(MONGODB_DATABASE_URL) \
+		-path $(MONGODB_MIGRATIONS_PATH) \
+		up
+
+# Down migrations
+.PHONY: migrate-down
+migrate-down:
+	@echo "+ $@"
+	@migrate \
+		-database $(MONGODB_DATABASE_URL) \
+		-path $(MONGODB_MIGRATIONS_PATH) \
+		down
+
+# Drop migrations
+.PHONY: migrate-drop
+migrate-drop:
+	@echo "+ $@"
+	@migrate \
+		-database $(MONGODB_DATABASE_URL) \
+		-path $(MONGODB_MIGRATIONS_PATH) \
+		drop

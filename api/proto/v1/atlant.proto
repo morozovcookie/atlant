@@ -1,0 +1,15 @@
+syntax = "proto3";
+
+package v1;
+
+import "google/protobuf/empty.proto";
+
+option go_package = ".;v1";
+
+message FetchRequest {
+  string URL = 1;
+}
+
+service AtlantService {
+  rpc Fetch(FetchRequest) returns(google.protobuf.Empty);
+}

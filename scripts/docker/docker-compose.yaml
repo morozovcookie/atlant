@@ -1,0 +1,131 @@
+version: '3'
+
+networks:
+  zookeeper-kafka:
+    external: false
+  kafdrop-kafka:
+    external: false
+  mongodb:
+    external: false
+
+volumes:
+  zookeeper:
+    driver: local
+
+  kafka-1:
+    driver: local
+  kafka-2:
+    driver: local
+  kafka-3:
+    driver: local
+
+  mongodb-1:
+    driver: local
+
+services:
+  # messaging
+  zookeeper:
+    image: wurstmeister/zookeeper #@sha256:3f43f72cb2832e7a5fbed7f7dbcd0c43004357974d8f32555d101bd53e81e74f
+    container_name: atlant-zookeeper
+    expose:
+    - 2181
+    networks:
+    - zookeeper-kafka
+    volumes:
+    - zookeeper:/var/zookeeper
+    - /var/run/docker.sock:/var/run/docker.sock
+
+  kafka-1:
+    image: wurstmeister/kafka@sha256:9be6d5ae19a6455998883fffe0e46ac9dcbee4d09861c791df97ed1883f03c49
+    container_name: atlant-kafka-1
+    ports:
+    - 9092:9092
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_LISTENERS: INTERNAL://:29092,EXTERNAL://:9092
+      KAFKA_ADVERTISED_LISTENERS: INTERNAL://kafka-1:29092,EXTERNAL://localhost:9092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: INTERNAL:PLAINTEXT,EXTERNAL:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: INTERNAL
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_MESSAGE_MAX_BYTES: 2097152
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: 'false'
+      KAFKA_REPLICA_FETCH_WAIT_MAX_MS: 200
+      KAFKA_REPLICE_LAG_TIME_MAX_MS: 1000
+    networks:
+    - zookeeper-kafka
+    - kafdrop-kafka
+    volumes:
+    - kafka-1:/tmp/kafka-logs
+    - /var/run/docker.sock:/var/run/docker.sock
+
+  kafka-2:
+    image: wurstmeister/kafka@sha256:9be6d5ae19a6455998883fffe0e46ac9dcbee4d09861c791df97ed1883f03c49
+    container_name: atlant-kafka-2
+    ports:
+    - 9093:9093
+    environment:
+      KAFKA_BROKER_ID: 2
+      KAFKA_LISTENERS: INTERNAL://:29093,EXTERNAL://:9093
+      KAFKA_ADVERTISED_LISTENERS: INTERNAL://kafka-2:29093,EXTERNAL://localhost:9093
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: INTERNAL:PLAINTEXT,EXTERNAL:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: INTERNAL
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_MESSAGE_MAX_BYTES: 2097152
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: 'false'
+      KAFKA_REPLICA_FETCH_WAIT_MAX_MS: 200
+      KAFKA_REPLICE_LAG_TIME_MAX_MS: 1000
+    networks:
+    - zookeeper-kafka
+    - kafdrop-kafka
+    volumes:
+    - kafka-2:/tmp/kafka-logs
+    - /var/run/docker.sock:/var/run/docker.sock
+
+  kafka-3:
+    image: wurstmeister/kafka@sha256:9be6d5ae19a6455998883fffe0e46ac9dcbee4d09861c791df97ed1883f03c49
+    container_name: atlant-kafka-3
+    ports:
+    - 9094:9094
+    environment:
+      KAFKA_BROKER_ID: 3
+      KAFKA_LISTENERS: INTERNAL://:29094,EXTERNAL://:9094
+      KAFKA_ADVERTISED_LISTENERS: INTERNAL://kafka-3:29094,EXTERNAL://localhost:9094
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: INTERNAL:PLAINTEXT,EXTERNAL:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: INTERNAL
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_MESSAGE_MAX_BYTES: 2097152
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: 'false'
+      KAFKA_REPLICA_FETCH_WAIT_MAX_MS: 200
+      KAFKA_REPLICE_LAG_TIME_MAX_MS: 1000
+    networks:
+    - zookeeper-kafka
+    - kafdrop-kafka
+    volumes:
+    - kafka-3:/tmp/kafka-logs
+    - /var/run/docker.sock:/var/run/docker.sock
+
+  kafdrop:
+    image: obsidiandynamics/kafdrop@sha256:b7ba8577ce395b1975b0ed98bb53cb6b13e7d32d5442188da1ce41c0838d1ce9
+    container_name: atlant-kafdrop
+    ports:
+      - 9001:9000
+    environment:
+      KAFKA_BROKERCONNECT: kafka-1:29092,kafka-2:29093,kafka-3:29094
+      JVM_OPTS: -Xms16M -Xmx48M -Xss180K -XX:-TieredCompilation -XX:+UseStringDeduplication -noverify
+    networks:
+    - kafdrop-kafka
+
+  # storage
+  mongodb-1:
+    image: percona/percona-server-mongodb@sha256:ebceb35753589d2912dbfa2cf6f6e9e3d6fc5ac311dea26d027104788bc283fd
+    container_name: atlant-mongodb-1
+    ports:
+    - 27017:27017
+    networks:
+    - mongodb
+    volumes:
+    - mongodb-1:/data/mongodb-1
+
+  # balancer
+
+  # application
