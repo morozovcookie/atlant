@@ -7,6 +7,7 @@ import (
 	"net/url"
 	"time"
 
+	"github.com/pkg/errors"
 	"github.com/stretchr/testify/mock"
 )
 
@@ -62,6 +63,180 @@ type MockProductStorer struct {
 
 func (ps *MockProductStorer) Store(ctx context.Context, pp ...Product) (err error) {
 	return ps.Called(ctx, pp).Error(0)
+}
+
+type StartParameter int
+
+func NewStartParameter(val int) (p StartParameter) {
+	return StartParameter(val)
+}
+
+func (p StartParameter) Int() (val int) {
+	return (int)(p)
+}
+
+const MinStartParameterValue int = 0
+
+var ErrInvalidStartParameterValue = errors.New(`"start" value should be greater or equal zero`)
+
+func (p StartParameter) Validate() (err error) {
+	if p.Int() < MinStartParameterValue {
+		return ErrInvalidStartParameterValue
+	}
+
+	return nil
+}
+
+type LimitParameter int
+
+func NewLimitParameter(val int) (p LimitParameter) {
+	return LimitParameter(val)
+}
+
+func (p LimitParameter) Int() (val int) {
+	return (int)(p)
+}
+
+const (
+	MinLimitParameterValue int = 1
+	MaxLimitParameterValue int = 100
+)
+
+var (
+	ErrInvalidLimitParameterMinValue = errors.New(`"limit" value should be greater or equal 1`)
+	ErrInvalidLimitParameterMaxValue = errors.New(`"limit" value should be less or equal 100`)
+)
+
+func (p LimitParameter) Validate() (err error) {
+	if p.Int() < MinLimitParameterValue {
+		return ErrInvalidLimitParameterMinValue
+	}
+
+	if p.Int() > MaxLimitParameterValue {
+		return ErrInvalidLimitParameterMaxValue
+	}
+
+	return nil
+}
+
+type SortingField string
+
+func (f SortingField) String() (s string) {
+	return string(f)
+}
+
+var (
+	ErrUnknownField                = errors.New("unknown field")
+	ErrFieldNotAvailableForSorting = errors.New("field not available for sorting")
+)
+
+func (f SortingField) Validate() (err error) {
+	var (
+		productFieldsMap = map[string]struct{}{
+			"name":         {},
+			"price":        {},
+			"created_at":   {},
+			"updated_at":   {},
+			"update_count": {},
+		}
+
+		availableSortingFieldsMap = map[string]struct{}{
+			"name":         {},
+			"price":        {},
+			"created_at":   {},
+			"updated_at":   {},
+			"update_count": {},
+		}
+	)
+
+	if _, ok := productFieldsMap[f.String()]; !ok {
+		return errors.WithMessage(ErrUnknownField, f.String())
+	}
+
+	if _, ok := availableSortingFieldsMap[f.String()]; !ok {
+		return errors.WithMessage(ErrFieldNotAvailableForSorting, f.String())
+	}
+
+	return nil
+}
+
+const (
+	SortingDirectionUnspecified SortingDirection = "UNSPECIFIED"
+	SortingDirectionAsc         SortingDirection = "ASC"
+	SortingDirectionDesc        SortingDirection = "DESC"
+)
+
+type SortingDirection string
+
+func (d SortingDirection) String() (s string) {
+	return string(d)
+}
+
+func (d *SortingDirection) Validate() {
+	if *d == SortingDirectionUnspecified {
+		*d = SortingDirectionAsc
+	}
+}
+
+//
+type ProductSortingOption struct {
+	//
+	Field SortingField
+
+	//
+	Direction SortingDirection
+}
+
+func NewProductSortingOption(f SortingField, d SortingDirection) ProductSortingOption {
+	return ProductSortingOption{
+		Field:     f,
+		Direction: d,
+	}
+}
+
+func (opt ProductSortingOption) Validate() (err error) {
+	opt.Direction.Validate()
+
+	return opt.Field.Validate()
+}
+
+type ProductSortingOptions []ProductSortingOption
+
+func (opts ProductSortingOptions) Validate() (err error) {
+	for _, opt := range opts {
+		if err = opt.Validate(); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+// ProductLister retrieve products list.
+type ProductLister interface {
+	// List retrieve products list with options, like limit or sorting.
+	List(ctx context.Context,
+		start StartParameter,
+		limit LimitParameter,
+		opts ProductSortingOptions) (pp []Product, err error)
+}
+
+type MockProductLister struct {
+	mock.Mock
+}
+
+func (pl *MockProductLister) List(
+	ctx context.Context,
+	start StartParameter,
+	limit LimitParameter,
+	opts ProductSortingOptions,
+) (
+	pp []Product,
+	err error,
+) {
+	args := pl.Called(ctx, start, limit, opts)
+
+	return args.Get(0).([]Product), args.Error(1)
 }
 
 //
