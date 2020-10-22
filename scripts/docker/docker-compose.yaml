@@ -5,15 +5,21 @@ networks:
     external: false
   kafdrop-kafka:
     external: false
+  mongodb:
+    external: false
 
 volumes:
   zookeeper:
     driver: local
-  kafka-1-vol:
+
+  kafka-1:
     driver: local
-  kafka-2-vol:
+  kafka-2:
     driver: local
-  kafka-3-vol:
+  kafka-3:
+    driver: local
+
+  mongodb-1:
     driver: local
 
 services:
@@ -49,7 +55,7 @@ services:
     - zookeeper-kafka
     - kafdrop-kafka
     volumes:
-    - kafka-1-vol:/tmp/kafka-logs
+    - kafka-1:/tmp/kafka-logs
     - /var/run/docker.sock:/var/run/docker.sock
 
   kafka-2:
@@ -72,7 +78,7 @@ services:
     - zookeeper-kafka
     - kafdrop-kafka
     volumes:
-    - kafka-2-vol:/tmp/kafka-logs
+    - kafka-2:/tmp/kafka-logs
     - /var/run/docker.sock:/var/run/docker.sock
 
   kafka-3:
@@ -95,7 +101,7 @@ services:
     - zookeeper-kafka
     - kafdrop-kafka
     volumes:
-    - kafka-3-vol:/tmp/kafka-logs
+    - kafka-3:/tmp/kafka-logs
     - /var/run/docker.sock:/var/run/docker.sock
 
   kafdrop:
@@ -109,8 +115,17 @@ services:
     networks:
     - kafdrop-kafka
 
-# balancer
+  # storage
+  mongodb-1:
+    image: percona/percona-server-mongodb@sha256:ebceb35753589d2912dbfa2cf6f6e9e3d6fc5ac311dea26d027104788bc283fd
+    container_name: atlant-mongodb-1
+    ports:
+    - 27017:27017
+    networks:
+    - mongodb
+    volumes:
+    - mongodb-1:/data/mongodb-1
 
-# application
+  # balancer
 
-# mongodb
+  # application

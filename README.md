@@ -10,6 +10,7 @@ Atlant gRPC Server
 - [Requirements](#requirements)
 - [Installation](#installation)
 - [Usage](#usage)
+- [TODO](#todo)
 - [Credits](#credits)
 
 # Requirements
@@ -26,6 +27,17 @@ Atlant gRPC Server
 # Usage
 
 <!-- place your text here -->
+
+# TODO
+
+Here is list of some features that could be implemented in the future:
+
+- [ ] Move Kafka from wurstmeister to confluentc
+- [ ] Support more protocols, not only http(s)
+- [ ] Use high-availability MongoDB cluster
+- [ ] Metrics
+- [ ] Liveness/Readiness probes
+- [ ] Producer and consumer compression
 
 # Credits
 

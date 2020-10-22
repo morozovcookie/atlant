@@ -6,6 +6,12 @@ GOOS        ?= linux
 GOARCH      ?= amd64
 GOFLAGS      = CGO_ENABLED=$(CGO_ENABLED) GOOS=$(GOOS) GOARCH=$(GOARCH)
 
+MONGODB_HOST            ?= 127.0.0.1
+MONGODB_PORT            ?= 27017
+MONGODB_DATABASE        ?= atlant
+MONGODB_DATABASE_URL     = mongodb://$(MONGODB_HOST):$(MONGODB_PORT)/$(MONGODB_DATABASE)
+MONGODB_MIGRATIONS_PATH ?= $(CURRENT_DIR)/migrations
+
 
 # Download dependencies.
 .PHONY: gomod
@@ -113,3 +119,30 @@ protoc:
 		--proto_path=third_party \
 		--gogofaster_out=plugins=grpc:grpc/v1 \
 		atlant.proto
+
+# Up migrations
+.PHONY: migrate-up
+migrate-up:
+	@echo "+ $@"
+	@migrate \
+		-database $(MONGODB_DATABASE_URL) \
+		-path $(MONGODB_MIGRATIONS_PATH) \
+		up
+
+# Down migrations
+.PHONY: migrate-down
+migrate-down:
+	@echo "+ $@"
+	@migrate \
+		-database $(MONGODB_DATABASE_URL) \
+		-path $(MONGODB_MIGRATIONS_PATH) \
+		down
+
+# Drop migrations
+.PHONY: migrate-drop
+migrate-drop:
+	@echo "+ $@"
+	@migrate \
+		-database $(MONGODB_DATABASE_URL) \
+		-path $(MONGODB_MIGRATIONS_PATH) \
+		drop
