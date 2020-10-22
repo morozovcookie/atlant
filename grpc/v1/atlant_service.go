@@ -49,6 +49,8 @@ func (s *AtlantService) Fetch(ctx context.Context, r *FetchRequest) (_ *empty.Em
 
 	u, err := url.Parse(r.Url)
 	if err != nil {
+		s.logger.Error("parse url error", zap.Error(err))
+
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
 
@@ -56,10 +58,14 @@ func (s *AtlantService) Fetch(ctx context.Context, r *FetchRequest) (_ *empty.Em
 
 	pp, err := s.fetcher.Fetch(ctx, u, reqRecvT)
 	if err != nil {
+		s.logger.Error("fetch error", zap.Error(err))
+
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
 	if err = s.storer.Store(ctx, pp...); err != nil {
+		s.logger.Error("store error", zap.Error(err))
+
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
