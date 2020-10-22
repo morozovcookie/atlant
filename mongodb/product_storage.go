@@ -188,9 +188,11 @@ func (ps *ProductStorage) List(
 		}
 
 		p = atlant.Product{
-			Price:     mp.Price,
-			Name:      mp.Name,
-			CreatedAt: time.Unix(0, mp.CreatedAt),
+			Price:       mp.Price,
+			Name:        mp.Name,
+			UpdateCount: 0,
+			CreatedAt:   time.Unix(0, mp.CreatedAt),
+			UpdatedAt:   time.Unix(0, 0),
 		}
 
 		if mp.UpdateCount != nil {
