@@ -35,7 +35,7 @@ message ListResponse {
     double price       = 2;
     int64 created_at   = 3;
     int64 updated_at   = 4;
-    int64 update_count = 5;
+    int32 update_count = 5;
   }
 
   repeated Product products = 1;
