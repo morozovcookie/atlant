@@ -39,13 +39,9 @@ func main() {
 		logger.Fatal("init consumer error", zap.Error(err))
 	}
 
-	mc := mongodb.NewClient(
-		mongodb.WithURI(cfg.MongoDBConfig.URI),
-		mongodb.WithDatabase("atlant"),
-		mongodb.WithCollection("products"))
-
-	if err = mc.Connect(context.Background()); err != nil {
-		logger.Fatal("mongodb connect error", zap.Error(err))
+	mc, err := initMongoDB(cfg)
+	if err != nil {
+		logger.Fatal("init mongodb client error", zap.Error(err))
 	}
 
 	pp := v1.NewProductProcessor(
@@ -91,4 +87,17 @@ func initConsumer(cfg *config.Config, logger *zap.Logger) (c *consumer.Consumer,
 		consumer.WithTopic("docker.atlant.cdc.products.0"),
 		consumer.WithGroupID(appname),
 		consumer.WithIsolationLevel(consumer.IsolationLevelReadCommitted))
+}
+
+func initMongoDB(cfg *config.Config) (mc *mongodb.Client, err error) {
+	mc = mongodb.NewClient(
+		mongodb.WithURI(cfg.MongoDBConfig.URI),
+		mongodb.WithDatabase("atlant"),
+		mongodb.WithCollection("products"))
+
+	if err = mc.Connect(context.Background()); err != nil {
+		return nil, err
+	}
+
+	return mc, nil
 }
