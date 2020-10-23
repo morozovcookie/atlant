@@ -1,20 +1,132 @@
 package main
 
 import (
+	"context"
+	stderrors "errors"
+	"fmt"
+	"io"
+	"os"
+	"strings"
+
+	v1 "github.com/morozovcookie/atlant/grpc/v1"
 	"github.com/spf13/cobra"
 	"go.uber.org/zap"
+	"google.golang.org/grpc"
 )
 
-func cmdList(_ *zap.Logger) (cmd *cobra.Command) {
+type ListCommandOptions struct {
+	host *HostFlag
+
+	start *StartFlag
+
+	limit *LimitFlag
+
+	sort *SortFlag
+}
+
+func (opts *ListCommandOptions) Validate() (err error) {
+	for _, opt := range []Flag{opts.host, opts.start, opts.limit, opts.sort} {
+		err = opt.Validate()
+
+		if stderrors.Is(ErrInvalidLimitParameterMinValue, err) && opts.limit.Int64() == 0 {
+			opts.limit = new(LimitFlag)
+			*(opts.limit.Pointer()) = 100
+
+			continue
+		}
+
+		if stderrors.Is(ErrInvalidLimitParameterMaxValue, err) {
+			opts.limit = new(LimitFlag)
+			*(opts.limit.Pointer()) = 100
+
+			continue
+		}
+
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (opts ListCommandOptions) Run(ctx context.Context, logger *zap.Logger) (err error) {
+	conn, err := grpc.DialContext(ctx, opts.host.String(), grpc.WithInsecure())
+	if err != nil {
+		return err
+	}
+
+	defer func(closer io.Closer) {
+		if closeErr := closer.Close(); closeErr != nil {
+			logger.Error("close conn error ", zap.Error(closeErr))
+			err = closeErr
+		}
+	}(conn)
+
+	svc := v1.NewAtlantServiceClient(conn)
+
+	req := &v1.ListRequest{
+		Start:   opts.start.Int64(),
+		Limit:   opts.limit.Int64(),
+		Options: make([]*v1.ListRequest_SortingOption, len(opts.sort.StringArray())),
+	}
+
+	for i, opt := range opts.sort.StringArray() {
+		var (
+			ss = strings.Split(opt, ":")
+
+			field     = ss[0]
+			direction = ss[1]
+		)
+
+		req.Options[i] = &v1.ListRequest_SortingOption{
+			Field:     field,
+			Direction: 1,
+		}
+
+		if direction == "desc" {
+			req.Options[i].Direction = 2
+		}
+	}
+
+	res, err := svc.List(ctx, req)
+	if err != nil {
+		return err
+	}
+
+	for _, p := range res.Products {
+		_, _ = fmt.Fprintf(os.Stdout, "%+v \n", p)
+	}
+
+	return nil
+}
+
+func cmdList(logger *zap.Logger) (cmd *cobra.Command) {
+	opts := &ListCommandOptions{
+		host:  new(HostFlag),
+		start: new(StartFlag),
+		limit: new(LimitFlag),
+		sort:  new(SortFlag),
+	}
+
 	cmd = &cobra.Command{
 		Use:     "list",
 		Short:   "",
 		Long:    "",
-		Example: "atlantclient list --host 127.0.0.1:8080 --start 0 --limit 100 --sort ?",
-		RunE: func(cmd *cobra.Command, args []string) error {
-			return nil
+		Example: "atlantclient list --host 127.0.0.1:8080 --start 0 --limit 100 --sort name:desc,updated_at:asc",
+		RunE: func(cmd *cobra.Command, args []string) (err error) {
+			if err = opts.Validate(); err != nil {
+				return err
+			}
+
+			return opts.Run(cmd.Context(), logger)
 		},
 	}
+
+	cmd.Flags().StringVar(opts.host.Pointer(), "host", "", "server host")
+	cmd.Flags().Int64Var(opts.start.Pointer(), "start", 0, "start position")
+	cmd.Flags().Int64Var(opts.limit.Pointer(), "limit", 0, "items per page")
+	cmd.Flags().StringSliceVar(opts.sort.Pointer(), "sort", nil, "sorting parameters")
 
 	return cmd
 }
