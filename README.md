@@ -32,14 +32,22 @@ Atlant gRPC Server
 
 Here is list of some features that could be implemented in the future:
 
-- [ ] Move Kafka from wurstmeister to confluentc
-- [ ] Support more protocols, not only http(s)
-- [ ] Use high-availability MongoDB cluster
 - [ ] Metrics
 - [ ] Liveness/Readiness probes
 - [ ] Producer and consumer compression
 - [ ] CI/CD
+- [ ] Deploy to k8s
+- [ ] Build Docker images using werf
+- [ ] More tests:
+    - [ ] Unit tests
+    - [ ] Integration tests
+    - [ ] Functional tests
 - [ ] GitHub Actions
+- [ ] Code docs
+- [ ] Write changes history on products fetching
+- [ ] Move Kafka from wurstmeister to confluentc
+- [ ] Support more protocols, not only http(s)
+- [ ] Use high-availability MongoDB cluster
 
 # Credits
 
