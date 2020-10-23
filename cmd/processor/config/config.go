@@ -12,6 +12,7 @@ type KafkaProductProducerConfig struct {
 
 //
 type MongoDBConfig struct {
+	//
 	URI string `env:"MONGODB_URI"`
 }
 
@@ -21,10 +22,12 @@ type Config struct {
 	MongoDBConfig
 }
 
+//
 func New() (c *Config) {
 	return &Config{}
 }
 
+//
 func (c *Config) Parse() (err error) {
 	if err = env.Parse(&c.KafkaProductProducerConfig); err != nil {
 		return err
