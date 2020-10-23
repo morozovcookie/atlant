@@ -4,7 +4,7 @@ GOPATH       = $(shell go env GOPATH)
 CGO_ENABLED  = 0
 GOOS        ?= linux
 GOARCH      ?= amd64
-GOFLAGS      = CGO_ENABLED=$(CGO_ENABLED) GOOS=$(GOOS) GOARCH=$(GOARCH)
+GOFLAGS      = GOOS=$(GOOS) GOARCH=$(GOARCH)
 
 MONGODB_HOST            ?= 127.0.0.1
 MONGODB_PORT            ?= 27017
