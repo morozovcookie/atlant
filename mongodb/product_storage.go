@@ -133,35 +133,7 @@ func (ps *ProductStorage) List(
 	pp []atlant.Product,
 	err error,
 ) {
-	var (
-		mdbOpts = options.
-			Find().
-			SetSkip(start.Int64()).
-			SetLimit(limit.Int64())
-		sort = bson.D{}
-
-		fromDomainFieldToMongoFieldMap = map[atlant.SortingField]string{
-			"name":         "name",
-			"price":        "price",
-			"created_at":   "created_at",
-			"updated_at":   "updated_at",
-			"update_count": "update_count",
-		}
-
-		fromDomainSortingDirectionToMongoSortingDirection = map[atlant.SortingDirection]int{
-			atlant.SortingDirectionAsc:  1,
-			atlant.SortingDirectionDesc: -1,
-		}
-	)
-
-	for _, opt := range opts {
-		sort = append(sort, bson.E{
-			Key:   fromDomainFieldToMongoFieldMap[opt.Field],
-			Value: fromDomainSortingDirectionToMongoSortingDirection[opt.Direction],
-		})
-	}
-
-	rows, err := ps.products.Find(ctx, bson.D{}, mdbOpts.SetSort(sort))
+	rows, err := ps.products.Find(ctx, bson.D{}, initListOptions(start, limit, opts))
 	if err != nil {
 		return nil, err
 	}
@@ -213,4 +185,43 @@ func (ps *ProductStorage) List(
 	}
 
 	return pp[:i], nil
+}
+
+func initListOptions(
+	start atlant.StartParameter,
+	limit atlant.LimitParameter,
+	opts atlant.ProductSortingOptions,
+) (
+	mdbOpts *options.FindOptions,
+) {
+	mdbOpts = options.
+		Find().
+		SetSkip(start.Int64()).
+		SetLimit(limit.Int64())
+
+	var (
+		sort = bson.D{}
+
+		fromDomainFieldToMongoFieldMap = map[atlant.SortingField]string{
+			"name":         "name",
+			"price":        "price",
+			"created_at":   "created_at",
+			"updated_at":   "updated_at",
+			"update_count": "update_count",
+		}
+
+		fromDomainSortingDirectionToMongoSortingDirection = map[atlant.SortingDirection]int{
+			atlant.SortingDirectionAsc:  1,
+			atlant.SortingDirectionDesc: -1,
+		}
+	)
+
+	for _, opt := range opts {
+		sort = append(sort, bson.E{
+			Key:   fromDomainFieldToMongoFieldMap[opt.Field],
+			Value: fromDomainSortingDirectionToMongoSortingDirection[opt.Direction],
+		})
+	}
+
+	return mdbOpts.SetSort(sort)
 }

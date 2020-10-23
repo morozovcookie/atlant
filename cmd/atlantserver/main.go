@@ -27,15 +27,13 @@ const (
 )
 
 func main() {
-	logger, err := zap.NewProduction()
+	logger, err := initLogger()
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	logger = logger.With(zap.String("app", appname))
-
 	cfg := config.New()
-	if err := cfg.Parse(); err != nil {
+	if err = cfg.Parse(); err != nil {
 		logger.Fatal("parse config error", zap.Error(err))
 	}
 
@@ -72,9 +70,7 @@ func main() {
 	eg.Go(s.Start)
 
 	logger.Info("application started")
-
 	<-quit
-
 	logger.Info("stopping application")
 
 	p.Close(context.Background())
@@ -145,4 +141,14 @@ func initMongoDB(cfg *config.Config) (mc *mongodb.Client, err error) {
 	}
 
 	return mc, nil
+}
+
+func initLogger() (logger *zap.Logger, err error) {
+	if logger, err = zap.NewProduction(); err != nil {
+		return nil, err
+	}
+
+	logger = logger.With(zap.String("app", appname))
+
+	return logger, nil
 }

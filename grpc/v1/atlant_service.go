@@ -77,55 +77,27 @@ var ErrUnknownSortingDirection = errors.New("unknown sorting direction")
 //
 func (s *AtlantService) List(ctx context.Context, req *ListRequest) (res *ListResponse, err error) {
 	var (
-		fromProtocolSortingDirectionToDomainSortingDirectionMap = map[string]atlant.SortingDirection{
-			ListRequest_SortingOption_SORTING_OPTION_UNSPECIFIED.String(): atlant.SortingDirectionUnspecified,
-			ListRequest_SortingOption_SORTING_OPTION_ASC.String():         atlant.SortingDirectionAsc,
-			ListRequest_SortingOption_SORTING_OPTION_DESC.String():        atlant.SortingDirectionDesc,
-		}
-
-		start    = atlant.NewStartParameter(req.Start)
-		limit    = atlant.NewLimitParameter(req.Limit)
-		sortOpts = make(atlant.ProductSortingOptions, len(req.Options))
+		start = atlant.NewStartParameter(req.Start)
+		limit = atlant.NewLimitParameter(req.Limit)
 	)
 
-	for i, opt := range req.Options {
-		d, ok := fromProtocolSortingDirectionToDomainSortingDirectionMap[opt.Direction.String()]
-		if !ok {
-			return nil,
-				status.Error(codes.InvalidArgument, ErrUnknownSortingDirection.Error()+": "+opt.Direction.String())
-		}
+	sortOpts, err := initSortingOptions(req.Options)
+	if err != nil {
+		s.logger.Error("init sorting options error", zap.Error(err))
 
-		sortOpts[i] = atlant.NewProductSortingOption(atlant.SortingField(opt.Field), d)
+		return nil, err
 	}
 
-	for _, p := range []interface {
-		Validate() (err error)
-	}{start, limit, sortOpts} {
-		err = p.Validate()
+	if err = validateListRequestParameters(start, &limit, req.Limit, sortOpts, s.logger); err != nil {
+		s.logger.Error("validate list request parameters", zap.Error(err))
 
-		if stderrors.Is(atlant.ErrInvalidLimitParameterMinValue, err) && req.Limit == 0 {
-			s.logger.Warn(`"limit" value less than min value - it will be set to 100`)
-
-			limit = atlant.NewLimitParameter(atlant.MaxLimitParameterValue)
-
-			continue
-		}
-
-		if stderrors.Is(atlant.ErrInvalidLimitParameterMaxValue, err) {
-			s.logger.Warn(`"limit" value more than max value - it will be set to 100`)
-
-			limit = atlant.NewLimitParameter(atlant.MaxLimitParameterValue)
-
-			continue
-		}
-
-		if err != nil {
-			return nil, status.Error(codes.InvalidArgument, err.Error())
-		}
+		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
 
 	pp, err := s.lister.List(ctx, start, limit, sortOpts)
 	if err != nil {
+		s.logger.Error("list request error", zap.Error(err))
+
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
 
@@ -144,4 +116,66 @@ func (s *AtlantService) List(ctx context.Context, req *ListRequest) (res *ListRe
 	}
 
 	return res, nil
+}
+
+func initSortingOptions(reqOpts []*ListRequest_SortingOption) (opts atlant.ProductSortingOptions, err error) {
+	opts = make(atlant.ProductSortingOptions, len(reqOpts))
+
+	fromProtocolSortingDirectionToDomainSortingDirectionMap := map[string]atlant.SortingDirection{
+		ListRequest_SortingOption_SORTING_OPTION_UNSPECIFIED.String(): atlant.SortingDirectionUnspecified,
+		ListRequest_SortingOption_SORTING_OPTION_ASC.String():         atlant.SortingDirectionAsc,
+		ListRequest_SortingOption_SORTING_OPTION_DESC.String():        atlant.SortingDirectionDesc,
+	}
+
+	for i, opt := range reqOpts {
+		d, ok := fromProtocolSortingDirectionToDomainSortingDirectionMap[opt.Direction.String()]
+		if !ok {
+			return nil,
+				status.Error(codes.InvalidArgument, ErrUnknownSortingDirection.Error()+": "+opt.Direction.String())
+		}
+
+		opts[i] = atlant.NewProductSortingOption(atlant.SortingField(opt.Field), d)
+	}
+
+	return opts, nil
+}
+
+func validateListRequestParameters(
+	start atlant.StartParameter,
+	limit *atlant.LimitParameter,
+	requestedLimit int64,
+	opts atlant.ProductSortingOptions,
+	logger *zap.Logger,
+) (
+	err error,
+) {
+	for _, p := range []interface {
+		Validate() (err error)
+	}{start, *limit, opts} {
+		err = p.Validate()
+
+		if stderrors.Is(atlant.ErrInvalidLimitParameterMinValue, err) && requestedLimit == 0 {
+			logger.Warn(`"limit" value less than min value - it will be set to 100`)
+
+			*limit = atlant.NewLimitParameter(atlant.MaxLimitParameterValue)
+
+			continue
+		}
+
+		if stderrors.Is(atlant.ErrInvalidLimitParameterMaxValue, err) {
+			logger.Warn(`"limit" value more than max value - it will be set to 100`)
+
+			*limit = atlant.NewLimitParameter(atlant.MaxLimitParameterValue)
+
+			continue
+		}
+
+		if err != nil {
+			logger.Error("validate request parameters error", zap.Error(err))
+
+			return err
+		}
+	}
+
+	return nil
 }
