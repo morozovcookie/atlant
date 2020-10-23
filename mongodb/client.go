@@ -27,7 +27,7 @@ func NewClient(opts ...Option) (c *Client) {
 }
 
 func (c *Client) Connect(ctx context.Context) (err error) {
-	connCtx, connCancel := context.WithTimeout(ctx, time.Second)
+	connCtx, connCancel := context.WithTimeout(ctx, 5*time.Second)
 	defer connCancel()
 
 	if c.client, err = mongo.NewClient(options.Client().ApplyURI(c.uri)); err != nil {
