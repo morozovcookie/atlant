@@ -4,6 +4,8 @@ import (
 	"github.com/morozovcookie/atlant"
 )
 
+// TODO: this is weird - I should move this file to another place
+
 //
 type Container struct {
 	//
@@ -11,6 +13,9 @@ type Container struct {
 
 	//
 	ProductStorer atlant.ProductStorer
+
+	//
+	ProductLister atlant.ProductLister
 
 	//
 	Clock Clock
@@ -24,6 +29,11 @@ func (c Container) ProductFetcherInstance() (fetcher atlant.ProductFetcher) {
 //
 func (c Container) ProductStorerInstance() (storer atlant.ProductStorer) {
 	return c.ProductStorer
+}
+
+//
+func (c Container) ProductListerInstance() (lister atlant.ProductLister) {
+	return c.ProductLister
 }
 
 //

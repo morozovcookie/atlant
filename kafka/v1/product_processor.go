@@ -12,25 +12,16 @@ import (
 )
 
 //
-type ProductStorage interface {
-	//
-	GetByID(ctx context.Context, id string) (p *atlant.Product, err error)
-
-	//
-	Store(ctx context.Context, pp ...atlant.Product) (err error)
-}
-
-//
 type ProductProcessor struct {
 	//
-	storage ProductStorage
+	storage atlant.ProductStorage
 
 	//
 	logger *zap.Logger
 }
 
 //
-func NewProductProcessor(ps ProductStorage, logger *zap.Logger) *ProductProcessor {
+func NewProductProcessor(ps atlant.ProductStorage, logger *zap.Logger) *ProductProcessor {
 	return &ProductProcessor{
 		storage: ps,
 
@@ -62,7 +53,7 @@ func (pp *ProductProcessor) ProcessProduct(r io.Reader) (err error) {
 		UpdatedAt: time.Unix(0, rp.UpdatedAt),
 	}
 
-	mp, err := pp.storage.GetByID(ctx, p.ID())
+	mp, err := pp.storage.GetByProductID(ctx, p.ID())
 	if err != nil {
 		return err
 	}

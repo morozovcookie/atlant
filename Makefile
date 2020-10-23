@@ -116,7 +116,6 @@ protoc:
 	@echo "+ $@"
 	@protoc \
 		--proto_path=api/proto/v1 \
-		--proto_path=third_party \
 		--gogofaster_out=plugins=grpc:grpc/v1 \
 		atlant.proto
 
