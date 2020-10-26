@@ -47,19 +47,7 @@ func main() {
 		logger.Fatal("create mongodb client error", zap.Error(err))
 	}
 
-	var s *grpc.Server
-	{
-		atlantSvc := svcV1.NewAtlantService(
-			initContainer(p, mc, logger),
-			logger.With(zap.String("component", "atlant_service")))
-
-		s = grpc.NewServer(
-			cfg.RPCServerConfig.Host,
-			logger.With(zap.String("component", "grpc_server")),
-			grpc.WithServiceRegistrator(func(gs *ggrpc.Server) {
-				svcV1.RegisterAtlantServiceServer(gs, atlantSvc)
-			}))
-	}
+	s := initServer(cfg, p, mc, logger)
 
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
@@ -151,4 +139,32 @@ func initLogger() (logger *zap.Logger, err error) {
 	logger = logger.With(zap.String("app", appname))
 
 	return logger, nil
+}
+
+func initServer(
+	cfg *config.Config,
+	p kafkaV1.Producer,
+	mc mongodb.MongoCollector,
+	logger *zap.Logger,
+) (
+	s *grpc.Server,
+) {
+	atlantSvc := svcV1.NewAtlantService(
+		initContainer(p, mc, logger),
+		logger.With(zap.String("component", "atlant_service")))
+
+	srvOpts := []grpc.Option{
+		grpc.WithServiceRegistrator(func(gs *ggrpc.Server) {
+			svcV1.RegisterAtlantServiceServer(gs, atlantSvc)
+		}),
+	}
+
+	if cfg.RPCServerConfig.UseTLS {
+		srvOpts = append(srvOpts, grpc.WithCredentials(cfg.RPCServerConfig.CrtPath, cfg.RPCServerConfig.KeyPath))
+	}
+
+	return grpc.NewServer(
+		cfg.RPCServerConfig.Host,
+		logger.With(zap.String("component", "grpc_server")),
+		srvOpts...)
 }

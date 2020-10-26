@@ -21,3 +21,13 @@ func WithServiceRegistrator(reg func(gs *grpc.Server)) Option {
 		reg(s.gs)
 	})
 }
+
+//
+func WithCredentials(crtPath, keyPath string) Option {
+	return serverOptionFunc(func(s *Server) {
+		s.creds = &ServerCredentials{
+			CrtPath: crtPath,
+			KeyPath: keyPath,
+		}
+	})
+}

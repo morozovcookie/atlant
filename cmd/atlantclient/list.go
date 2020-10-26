@@ -12,6 +12,8 @@ import (
 	"github.com/spf13/cobra"
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials"
+	"google.golang.org/grpc/status"
 )
 
 type ListCommandOptions struct {
@@ -22,6 +24,8 @@ type ListCommandOptions struct {
 	limit *LimitFlag
 
 	sort *SortFlag
+
+	crt string
 }
 
 func (opts *ListCommandOptions) Validate() (err error) {
@@ -51,7 +55,18 @@ func (opts *ListCommandOptions) Validate() (err error) {
 }
 
 func (opts ListCommandOptions) Run(ctx context.Context, logger *zap.Logger) (err error) {
-	conn, err := grpc.DialContext(ctx, opts.host.String(), grpc.WithInsecure())
+	dialOpt := grpc.WithInsecure()
+
+	if opts.crt != "" {
+		creds, err := credentials.NewServerTLSFromFile(opts.crt, "")
+		if err != nil {
+			return err
+		}
+
+		dialOpt = grpc.WithTransportCredentials(creds)
+	}
+
+	conn, err := grpc.DialContext(ctx, opts.host.String(), dialOpt)
 	if err != nil {
 		return err
 	}
@@ -65,6 +80,23 @@ func (opts ListCommandOptions) Run(ctx context.Context, logger *zap.Logger) (err
 
 	svc := v1.NewAtlantServiceClient(conn)
 
+	pp, err := opts.makeListRequest(ctx, svc, logger)
+
+	for _, p := range pp {
+		_, _ = fmt.Fprintf(os.Stdout, "%+v \n", p)
+	}
+
+	return nil
+}
+
+func (opts ListCommandOptions) makeListRequest(
+	ctx context.Context,
+	svc v1.AtlantServiceClient,
+	logger *zap.Logger,
+) (
+	pp []*v1.ListResponse_Product,
+	err error,
+) {
 	req := &v1.ListRequest{
 		Start:   opts.start.Int64(),
 		Limit:   opts.limit.Int64(),
@@ -91,14 +123,18 @@ func (opts ListCommandOptions) Run(ctx context.Context, logger *zap.Logger) (err
 
 	res, err := svc.List(ctx, req)
 	if err != nil {
-		return err
+		if grpcErr, ok := status.FromError(err); ok {
+			logger.Error("request error",
+				zap.NamedError("error", grpcErr.Err()),
+				zap.String("code", grpcErr.Code().String()),
+				zap.String("message", grpcErr.Message()),
+				zap.Any("details", grpcErr.Details()))
+		}
+
+		return nil, err
 	}
 
-	for _, p := range res.Products {
-		_, _ = fmt.Fprintf(os.Stdout, "%+v \n", p)
-	}
-
-	return nil
+	return res.Products, nil
 }
 
 func cmdList(logger *zap.Logger) (cmd *cobra.Command) {
@@ -127,6 +163,7 @@ func cmdList(logger *zap.Logger) (cmd *cobra.Command) {
 	cmd.Flags().Int64Var(opts.start.Pointer(), "start", 0, "start position")
 	cmd.Flags().Int64Var(opts.limit.Pointer(), "limit", 0, "items per page")
 	cmd.Flags().StringSliceVar(opts.sort.Pointer(), "sort", nil, "sorting parameters")
+	cmd.Flags().StringVar(&opts.crt, "crt", "", "server certificate")
 
 	return cmd
 }
