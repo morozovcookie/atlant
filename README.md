@@ -32,6 +32,7 @@ Atlant gRPC Server
 
 Here is list of some features that could be implemented in the future:
 
+- [ ] Finish docker-compose deploy
 - [ ] Metrics
 - [ ] Liveness/Readiness probes
 - [ ] Producer and consumer compression
@@ -44,10 +45,12 @@ Here is list of some features that could be implemented in the future:
     - [ ] Functional tests
 - [ ] GitHub Actions
 - [ ] Code docs
+- [ ] Use earliest offset in Kafka and changes history for indempotence
 - [ ] Write changes history on products fetching
 - [ ] Move Kafka from wurstmeister to confluentc
 - [ ] Support more protocols, not only http(s)
 - [ ] Use high-availability MongoDB cluster
+- [ ] Move from HAProxy to Envoy cluster
 
 # Credits
 
