@@ -48,22 +48,37 @@ test-unit:
 		coverage.out
 	@echo "+ $@"
 
-# Locally run the application, e.g. node index.js, python -m myapp, go run myapp etc ...
-.PHONY: run
-run:
-	@echo "+ $@"
-
 # Build the Docker container.
 .PHONY: docker-build
-docker-build:
+docker-build: atlantserver-docker-build processor-docker-build
 	@echo "+ $@"
+
+# Build atlantserver docker image.
+.PHONY: atlantserver-docker-build
+atlantserver-docker-build:
+	@echo "+ $@"
+	@docker build \
+		--rm \
+		-f ./scripts/docker/Dockerfile.atlantserver \
+		-t atlantserver:latest \
+		.
+
+# Build processor docker image.
+.PHONY: processor-docker-build
+processor-docker-build:
+	@echo "+ $@"
+	@docker build \
+		--rm \
+		-f ./scripts/docker/Dockerfile.processor \
+		-t processor:latest \
+		.
 
 # Build the binaries.
 .PHONY: go-build
-go-build: atlantserver-build atlantclient-build csvgen-build fileserver-build
+go-build: atlantserver-build atlantclient-build processor-build
 	@echo "+ $@"
 
-# Build the binaries.
+# Build the atlantserver binary.
 .PHONY: atlantserver-build
 atlantserver-build:
 	@echo "+ $@"
@@ -72,32 +87,23 @@ atlantserver-build:
 		-o $(CURRENT_DIR)/out/atlantserver \
 		$(CURRENT_DIR)/cmd/atlantserver/main.go
 
-# Build the binaries.
+# Build the atlantclient binary.
 .PHONY: atlantclient-build
 atlantclient-build:
+	@echo "+ $@"
+	@CGO_ENABLED = 0 $(GOFLAGS) go build \
+		-ldflags "-s -w" \
+		-o $(CURRENT_DIR)/out/atlantclient \
+		$(CURRENT_DIR)/cmd/atlantclient/main.go
+
+# Build the processor binary.
+.PHONY: processor-build
+processor-build:
 	@echo "+ $@"
 	@$(GOFLAGS) go build \
 		-ldflags "-s -w" \
 		-o $(CURRENT_DIR)/out/atlantclient \
 		$(CURRENT_DIR)/cmd/atlantclient/main.go
-
-# Build the csvgen binary.
-.PHONY: csvgen-build
-csvgen-build:
-	@echo "+ $@"
-	@$(GOFLAGS) go build \
-		-ldflags "-s -w" \
-		-o $(CURRENT_DIR)/out/csvgen \
-		$(CURRENT_DIR)/cmd/csvgen/main.go
-
-# Build the fileserver binary.
-.PHONY: fileserver-build
-fileserver-build:
-	@echo "+ $@"
-	@$(GOFLAGS) go build \
-		-ldflags "-s -w" \
-		-o $(CURRENT_DIR)/out/fileserver \
-		$(CURRENT_DIR)/cmd/fileserver/main.go
 
 # Build the application with werf.
 .PHONY: werf-build
