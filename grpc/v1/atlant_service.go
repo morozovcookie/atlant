@@ -3,6 +3,7 @@ package v1
 import (
 	"context"
 	stderrors "errors"
+	"fmt"
 	"net/url"
 
 	"github.com/golang/protobuf/ptypes/empty"
@@ -45,6 +46,8 @@ func NewAtlantService(config AtlantServiceConfig, logger *zap.Logger) *AtlantSer
 
 //
 func (s *AtlantService) Fetch(ctx context.Context, r *FetchRequest) (_ *empty.Empty, err error) {
+	s.logger.Info("receive Fetch request", zap.String("request", fmt.Sprintf("%+v", r)))
+
 	reqRecvT := s.clock.NowInUTC()
 
 	u, err := url.Parse(r.Url)
@@ -76,6 +79,8 @@ var ErrUnknownSortingDirection = errors.New("unknown sorting direction")
 
 //
 func (s *AtlantService) List(ctx context.Context, req *ListRequest) (res *ListResponse, err error) {
+	s.logger.Info("receive List request", zap.String("request", fmt.Sprintf("%+v", req)))
+
 	var (
 		start = atlant.NewStartParameter(req.Start)
 		limit = atlant.NewLimitParameter(req.Limit)
