@@ -3,9 +3,29 @@ version: '3'
 networks:
   zookeeper-kafka:
     external: false
+
   kafdrop-kafka:
     external: false
+
+  kafka-atlantserver:
+    external: false
+
+  kafka-processor:
+    external: false
+
   mongodb:
+    external: false
+
+  mongodb-atlantserver:
+    external: false
+
+  mongodb-processor:
+    external: false
+
+  ingress:
+    external: false
+
+  fileserver:
     external: false
 
 volumes:
@@ -38,12 +58,13 @@ services:
   kafka-1:
     image: wurstmeister/kafka@sha256:9be6d5ae19a6455998883fffe0e46ac9dcbee4d09861c791df97ed1883f03c49
     container_name: atlant-kafka-1
-    ports:
-    - 9092:9092
+    expose:
+    - 29092
+    - 9092
     environment:
       KAFKA_BROKER_ID: 1
       KAFKA_LISTENERS: INTERNAL://:29092,EXTERNAL://:9092
-      KAFKA_ADVERTISED_LISTENERS: INTERNAL://kafka-1:29092,EXTERNAL://localhost:9092
+      KAFKA_ADVERTISED_LISTENERS: INTERNAL://kafka-1:29092,EXTERNAL://kafka-1:9092
       KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: INTERNAL:PLAINTEXT,EXTERNAL:PLAINTEXT
       KAFKA_INTER_BROKER_LISTENER_NAME: INTERNAL
       KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
@@ -54,19 +75,24 @@ services:
     networks:
     - zookeeper-kafka
     - kafdrop-kafka
+    - kafka-atlantserver
+    - kafka-processor
     volumes:
     - kafka-1:/tmp/kafka-logs
     - /var/run/docker.sock:/var/run/docker.sock
+    depends_on:
+    - zookeeper
 
   kafka-2:
     image: wurstmeister/kafka@sha256:9be6d5ae19a6455998883fffe0e46ac9dcbee4d09861c791df97ed1883f03c49
     container_name: atlant-kafka-2
-    ports:
-    - 9093:9093
+    expose:
+    - 29092
+    - 9092
     environment:
       KAFKA_BROKER_ID: 2
-      KAFKA_LISTENERS: INTERNAL://:29093,EXTERNAL://:9093
-      KAFKA_ADVERTISED_LISTENERS: INTERNAL://kafka-2:29093,EXTERNAL://localhost:9093
+      KAFKA_LISTENERS: INTERNAL://:29092,EXTERNAL://:9092
+      KAFKA_ADVERTISED_LISTENERS: INTERNAL://kafka-2:29092,EXTERNAL://kafka-2:9092
       KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: INTERNAL:PLAINTEXT,EXTERNAL:PLAINTEXT
       KAFKA_INTER_BROKER_LISTENER_NAME: INTERNAL
       KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
@@ -77,19 +103,24 @@ services:
     networks:
     - zookeeper-kafka
     - kafdrop-kafka
+    - kafka-atlantserver
+    - kafka-processor
     volumes:
     - kafka-2:/tmp/kafka-logs
     - /var/run/docker.sock:/var/run/docker.sock
+    depends_on:
+    - zookeeper
 
   kafka-3:
     image: wurstmeister/kafka@sha256:9be6d5ae19a6455998883fffe0e46ac9dcbee4d09861c791df97ed1883f03c49
     container_name: atlant-kafka-3
-    ports:
-    - 9094:9094
+    expose:
+    - 29092
+    - 9092
     environment:
       KAFKA_BROKER_ID: 3
-      KAFKA_LISTENERS: INTERNAL://:29094,EXTERNAL://:9094
-      KAFKA_ADVERTISED_LISTENERS: INTERNAL://kafka-3:29094,EXTERNAL://localhost:9094
+      KAFKA_LISTENERS: INTERNAL://:29092,EXTERNAL://:9092
+      KAFKA_ADVERTISED_LISTENERS: INTERNAL://kafka-3:29092,EXTERNAL://kafka-3:9092
       KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: INTERNAL:PLAINTEXT,EXTERNAL:PLAINTEXT
       KAFKA_INTER_BROKER_LISTENER_NAME: INTERNAL
       KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
@@ -100,20 +131,28 @@ services:
     networks:
     - zookeeper-kafka
     - kafdrop-kafka
+    - kafka-atlantserver
+    - kafka-processor
     volumes:
     - kafka-3:/tmp/kafka-logs
     - /var/run/docker.sock:/var/run/docker.sock
+    depends_on:
+    - zookeeper
 
   kafdrop:
     image: obsidiandynamics/kafdrop@sha256:b7ba8577ce395b1975b0ed98bb53cb6b13e7d32d5442188da1ce41c0838d1ce9
     container_name: atlant-kafdrop
     ports:
-      - 9001:9000
+    - 9001:9000
     environment:
-      KAFKA_BROKERCONNECT: kafka-1:29092,kafka-2:29093,kafka-3:29094
+      KAFKA_BROKERCONNECT: kafka-1:29092,kafka-2:29092,kafka-3:29092
       JVM_OPTS: -Xms16M -Xmx48M -Xss180K -XX:-TieredCompilation -XX:+UseStringDeduplication -noverify
     networks:
     - kafdrop-kafka
+    depends_on:
+    - kafka-1
+    - kafka-2
+    - kafka-3
 
   # storage
   mongodb-1:
@@ -123,9 +162,168 @@ services:
     - 27017:27017
     networks:
     - mongodb
+    - mongodb-atlantserver
+    - mongodb-processor
     volumes:
     - mongodb-1:/data/mongodb-1
 
-  # balancer
+  # ingress
+  ingress-1:
+    image: haproxy@sha256:e8437c31bc4df53f5aee0fd05b0c0038adf5d7918e4615fc0b44be66865fa13d
+    container_name: ingress-1
+    expose:
+    - 3001
+    - 8404
+    ports:
+    - 3001:3001
+    - 8404:8404
+    networks:
+    - ingress
+    volumes:
+    - ./haproxy.cfg:/usr/local/etc/haproxy/haproxy.cfg
+    - ./certs/ingress-1.pem:/etc/haproxy/pem/ingress-1.pem
+    - ./certs/server-1.crt:/etc/haproxy/pem/server-1.crt
+    - ./certs/server-2.crt:/etc/haproxy/pem/server-2.crt
+    - ./certs/server-3.crt:/etc/haproxy/pem/server-3.crt
+    depends_on:
+    - atlantserver-1
+    - atlantserver-2
+    - atlantserver-3
 
-  # application
+  # server
+  atlantserver-1:
+    image: atlantserver:latest
+    container_name: atlant-server-1
+    expose:
+    - 8080
+    environment:
+      RPC_SERVER_HOST: 0.0.0.0:8080
+      RPC_SERVER_USE_TLS: 'true'
+      RPC_SERVER_CRT_PATH: /server.crt
+      RPC_SERVER_KEY_PATH: /server.key
+      KAFKA_PRODUCT_PRODUCER_SERVERS: kafka-1:29092,kafka-2:29092,kafka-3:29092
+      MONGODB_URI: mongodb://mongodb-1:27017/atlant
+    networks:
+    - ingress
+    - mongodb-atlantserver
+    - kafka-atlantserver
+    volumes:
+    - ./certs/server-1.crt:/server.crt
+    - ./certs/server-1.key:/server.key
+    depends_on:
+    - kafka-1
+    - kafka-2
+    - kafka-3
+    - mongodb-1
+
+  atlantserver-2:
+    image: atlantserver:latest
+    container_name: atlant-server-2
+    expose:
+    - 8080
+    environment:
+      RPC_SERVER_HOST: 0.0.0.0:8080
+      RPC_SERVER_USE_TLS: 'true'
+      RPC_SERVER_CRT_PATH: /server.crt
+      RPC_SERVER_KEY_PATH: /server.key
+      KAFKA_PRODUCT_PRODUCER_SERVERS: kafka-1:29092,kafka-2:29092,kafka-3:29092
+      MONGODB_URI: mongodb://mongodb-1:27017/atlant
+    networks:
+    - ingress
+    - mongodb-atlantserver
+    - kafka-atlantserver
+    volumes:
+    - ./certs/server-2.crt:/server.crt
+    - ./certs/server-2.key:/server.key
+    depends_on:
+    - kafka-1
+    - kafka-2
+    - kafka-3
+    - mongodb-1
+
+  atlantserver-3:
+    image: atlantserver:latest
+    container_name: atlant-server-3
+    expose:
+    - 8080
+    environment:
+      RPC_SERVER_HOST: 0.0.0.0:8080
+      RPC_SERVER_USE_TLS: 'true'
+      RPC_SERVER_CRT_PATH: /server.crt
+      RPC_SERVER_KEY_PATH: /server.key
+      KAFKA_PRODUCT_PRODUCER_SERVERS: kafka-1:29092,kafka-2:29092,kafka-3:29092
+      MONGODB_URI: mongodb://mongodb-1:27017/atlant
+    networks:
+    - ingress
+    - mongodb-atlantserver
+    - kafka-atlantserver
+    volumes:
+    - ./certs/server-3.crt:/server.crt
+    - ./certs/server-3.key:/server.key
+    depends_on:
+    - kafka-1
+    - kafka-2
+    - kafka-3
+    - mongodb-1
+
+  # processor
+  processor-1:
+    image: processor:latest
+    container_name: atlant-processor-1
+    environment:
+      KAFKA_PRODUCT_CONSUMER_SERVERS: kafka-1:29092,kafka-2:29092,kafka-3:29092
+      MONGODB_URI: mongodb://mongodb-1:27017/atlant
+    networks:
+    - mongodb-processor
+    - kafka-processor
+    depends_on:
+    - kafka-1
+    - kafka-2
+    - kafka-3
+    - mongodb-1
+
+  processor-2:
+    image: processor:latest
+    container_name: atlant-processor-2
+    environment:
+      KAFKA_PRODUCT_CONSUMER_SERVERS: kafka-1:29092,kafka-2:29092,kafka-3:29092
+      MONGODB_URI: mongodb://mongodb-1:27017/atlant
+    networks:
+    - mongodb-processor
+    - kafka-processor
+    depends_on:
+    - kafka-1
+    - kafka-2
+    - kafka-3
+    - mongodb-1
+
+  processor-3:
+    image: processor:latest
+    container_name: atlant-processor-3
+    environment:
+      KAFKA_PRODUCT_CONSUMER_SERVERS: kafka-1:29092,kafka-2:29092,kafka-3:29092
+      MONGODB_URI: mongodb://mongodb-1:27017/atlant
+    networks:
+    - mongodb-processor
+    - kafka-processor
+    depends_on:
+    - kafka-1
+    - kafka-2
+    - kafka-3
+    - mongodb-1
+
+  # fileserver
+  fileserver:
+    image: nginx@sha256:a411d06ab4f5347ac9652357ac35600555aeff0b910326cc7adc36d471e0b36f
+    container_name: atlant-fileserver
+    ports:
+    - 8181:80
+    networks:
+    - fileserver
+    volumes:
+    - ./nginx.conf:/etc/nginx/conf.d/default.conf
+    - ./staticfiles:/usr/share/nginx/html:ro
+
+  # logging system (ELK)
+
+  # metrics
