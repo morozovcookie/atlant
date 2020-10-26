@@ -16,6 +16,10 @@ type Client struct {
 	client *mongo.Client
 }
 
+const (
+	connectTimeout = 5 * time.Second
+)
+
 func NewClient(opts ...Option) (c *Client) {
 	c = &Client{}
 
@@ -27,7 +31,7 @@ func NewClient(opts ...Option) (c *Client) {
 }
 
 func (c *Client) Connect(ctx context.Context) (err error) {
-	connCtx, connCancel := context.WithTimeout(ctx, 5*time.Second)
+	connCtx, connCancel := context.WithTimeout(ctx, connectTimeout)
 	defer connCancel()
 
 	if c.client, err = mongo.NewClient(options.Client().ApplyURI(c.uri)); err != nil {
