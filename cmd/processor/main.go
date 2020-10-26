@@ -83,7 +83,7 @@ func initConsumer(cfg *config.Config, logger *zap.Logger) (c *consumer.Consumer,
 	return consumer.New(
 		context.Background(),
 		logger.With(zap.String("component", "product_consumer")),
-		consumer.WithServers(cfg.KafkaProductProducerConfig.Servers),
+		consumer.WithServers(cfg.KafkaProductConsumerConfig.Servers),
 		consumer.WithTopic("docker.atlant.cdc.products.0"),
 		consumer.WithGroupID(appname),
 		consumer.WithIsolationLevel(consumer.IsolationLevelReadCommitted))
