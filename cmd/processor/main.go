@@ -53,14 +53,19 @@ func main() {
 
 	logger.Info("starting application")
 
-	eg := &errgroup.Group{}
+	eg, ctx := errgroup.WithContext(context.Background())
 	eg.Go(func() error {
 		return c.Subscribe(pp.ProcessProduct)
 	})
 
 	logger.Info("application started")
 
-	<-quit
+	select {
+	case <-quit:
+		break
+	case <-ctx.Done():
+		break
+	}
 
 	logger.Info("application stopping")
 

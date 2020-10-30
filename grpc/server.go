@@ -5,7 +5,6 @@ import (
 
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials"
 )
 
 type ServerCredentials struct {
@@ -45,17 +44,6 @@ func NewServer(host string, logger *zap.Logger, opts ...Option) (s *Server) {
 
 //
 func (s *Server) Start() (err error) {
-	s.gs = grpc.NewServer()
-
-	if s.creds != nil {
-		creds, err := credentials.NewServerTLSFromFile(s.creds.CrtPath, s.creds.KeyPath)
-		if err != nil {
-			return err
-		}
-
-		s.gs = grpc.NewServer(grpc.Creds(creds))
-	}
-
 	lis, err := net.Listen("tcp", s.host)
 	if err != nil {
 		return err

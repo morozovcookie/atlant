@@ -54,11 +54,18 @@ func main() {
 
 	logger.Info("starting application")
 
-	eg := errgroup.Group{}
+	eg, ctx := errgroup.WithContext(context.Background())
 	eg.Go(s.Start)
 
 	logger.Info("application started")
-	<-quit
+
+	select {
+	case <-quit:
+		break
+	case <-ctx.Done():
+		break
+	}
+
 	logger.Info("stopping application")
 
 	p.Close(context.Background())
@@ -97,12 +104,17 @@ func initContainer(p kafkaV1.Producer, mc mongodb.MongoCollector, logger *zap.Lo
 }
 
 func initProducer(cfg *config.Config, logger *zap.Logger) (p *producer.Producer, err error) {
+	hn, err := os.Hostname()
+	if err != nil {
+		return nil, err
+	}
+
 	p, err = producer.New(
 		logger.With(zap.String("component", "product_producer")),
 		producer.WithServers(cfg.KafkaProductProducerConfig.Servers),
 		producer.WithTopic("docker.atlant.cdc.products.0"),
 		producer.WithAcknowledgement(producer.AcknowledgementWaitAll),
-		producer.WithTransactionalID(appname+"-"+cfg.Hostname),
+		producer.WithTransactionalID(appname+"-"+hn),
 		producer.WithIdempotenceState(producer.IdempotenceEnabledState),
 		producer.WithCompressionType(producer.CompressionTypeGzip))
 	if err != nil {
@@ -153,18 +165,10 @@ func initServer(
 		initContainer(p, mc, logger),
 		logger.With(zap.String("component", "atlant_service")))
 
-	srvOpts := []grpc.Option{
-		grpc.WithServiceRegistrator(func(gs *ggrpc.Server) {
-			svcV1.RegisterAtlantServiceServer(gs, atlantSvc)
-		}),
-	}
-
-	if cfg.RPCServerConfig.UseTLS {
-		srvOpts = append(srvOpts, grpc.WithCredentials(cfg.RPCServerConfig.CrtPath, cfg.RPCServerConfig.KeyPath))
-	}
-
 	return grpc.NewServer(
 		cfg.RPCServerConfig.Host,
 		logger.With(zap.String("component", "grpc_server")),
-		srvOpts...)
+		grpc.WithServiceRegistrator(func(gs *ggrpc.Server) {
+			svcV1.RegisterAtlantServiceServer(gs, atlantSvc)
+		}))
 }

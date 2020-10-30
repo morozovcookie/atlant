@@ -14,15 +14,6 @@ type KafkaProductProducerConfig struct {
 type RPCServerConfig struct {
 	//
 	Host string `env:"RPC_SERVER_HOST"`
-
-	//
-	UseTLS bool `env:"RPC_SERVER_USE_TLS"`
-
-	//
-	CrtPath string `env:"RPC_SERVER_CRT_PATH"`
-
-	//
-	KeyPath string `env:"RPC_SERVER_KEY_PATH"`
 }
 
 //
@@ -33,8 +24,6 @@ type MongoDBConfig struct {
 
 //
 type Config struct {
-	Hostname string `env:"HOSTNAME"`
-
 	KafkaProductProducerConfig
 	RPCServerConfig
 	MongoDBConfig
