@@ -51,6 +51,7 @@ Here is list of some features that could be implemented in the future:
 - [ ] Support more protocols, not only http(s)
 - [ ] Use high-availability MongoDB cluster
 - [ ] Move from Nginx ingres to Envoy mesh network
+- [ ] Replace JSON with Avro
 
 # Credits
 
