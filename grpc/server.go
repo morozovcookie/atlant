@@ -7,31 +7,25 @@ import (
 	"google.golang.org/grpc"
 )
 
-type ServerCredentials struct {
-	CrtPath string
-	KeyPath string
-}
-
 //
 type Server struct {
 	//
-	gs *grpc.Server
+	address string
 
 	//
-	host string
+	srv *grpc.Server
 
 	//
 	logger *zap.Logger
-
-	//
-	creds *ServerCredentials
 }
 
 //
-func NewServer(host string, logger *zap.Logger, opts ...Option) (s *Server) {
+func NewServer(address string, logger *zap.Logger, opts ...Option) (s *Server) {
 	s = &Server{
-		gs:     grpc.NewServer(),
-		host:   host,
+		address: address,
+
+		srv: grpc.NewServer(),
+
 		logger: logger,
 	}
 
@@ -43,16 +37,18 @@ func NewServer(host string, logger *zap.Logger, opts ...Option) (s *Server) {
 }
 
 //
-func (s *Server) Start() (err error) {
-	lis, err := net.Listen("tcp", s.host)
+func (s *Server) ListenAndServe() (err error) {
+	s.logger.Info("starting")
+
+	lis, err := net.Listen("tcp", s.address)
 	if err != nil {
 		return err
 	}
 
-	return s.gs.Serve(lis)
+	return s.srv.Serve(lis)
 }
 
 //
-func (s *Server) Stop() {
-	s.gs.GracefulStop()
+func (s *Server) Close() {
+	s.srv.GracefulStop()
 }

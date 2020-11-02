@@ -19,7 +19,7 @@ import (
 	_ "go.uber.org/automaxprocs"
 	"go.uber.org/zap"
 	"golang.org/x/sync/errgroup"
-	ggrpc "google.golang.org/grpc"
+	stdgrpc "google.golang.org/grpc"
 )
 
 const (
@@ -55,7 +55,7 @@ func main() {
 	logger.Info("starting application")
 
 	eg, ctx := errgroup.WithContext(context.Background())
-	eg.Go(s.Start)
+	eg.Go(s.ListenAndServe)
 
 	logger.Info("application started")
 
@@ -70,7 +70,7 @@ func main() {
 
 	p.Close(context.Background())
 
-	s.Stop()
+	s.Close()
 
 	if err = mc.Close(context.Background()); err != nil {
 		logger.Error("mongodb client close error", zap.Error(err))
@@ -168,7 +168,7 @@ func initServer(
 	return grpc.NewServer(
 		cfg.RPCServerConfig.Host,
 		logger.With(zap.String("component", "grpc_server")),
-		grpc.WithServiceRegistrator(func(gs *ggrpc.Server) {
-			svcV1.RegisterAtlantServiceServer(gs, atlantSvc)
+		grpc.WithServiceRegistrator(func(s *stdgrpc.Server) {
+			svcV1.RegisterAtlantServiceServer(s, atlantSvc)
 		}))
 }
