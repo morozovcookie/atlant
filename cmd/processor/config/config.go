@@ -5,9 +5,9 @@ import (
 )
 
 //
-type KafkaProductProducerConfig struct {
+type KafkaProductConsumerConfig struct {
 	//
-	Servers []string `env:"KAFKA_PRODUCT_PRODUCER_SERVERS"`
+	Servers []string `env:"KAFKA_PRODUCT_CONSUMER_SERVERS"`
 }
 
 //
@@ -18,7 +18,7 @@ type MongoDBConfig struct {
 
 //
 type Config struct {
-	KafkaProductProducerConfig
+	KafkaProductConsumerConfig
 	MongoDBConfig
 }
 
@@ -29,7 +29,7 @@ func New() (c *Config) {
 
 //
 func (c *Config) Parse() (err error) {
-	if err = env.Parse(&c.KafkaProductProducerConfig); err != nil {
+	if err = env.Parse(&c.KafkaProductConsumerConfig); err != nil {
 		return err
 	}
 

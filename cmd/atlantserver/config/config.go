@@ -24,8 +24,6 @@ type MongoDBConfig struct {
 
 //
 type Config struct {
-	Hostname string `env:"HOSTNAME"`
-
 	KafkaProductProducerConfig
 	RPCServerConfig
 	MongoDBConfig

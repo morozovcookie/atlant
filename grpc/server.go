@@ -7,6 +7,11 @@ import (
 	"google.golang.org/grpc"
 )
 
+type ServerCredentials struct {
+	CrtPath string
+	KeyPath string
+}
+
 //
 type Server struct {
 	//
@@ -17,6 +22,9 @@ type Server struct {
 
 	//
 	logger *zap.Logger
+
+	//
+	creds *ServerCredentials
 }
 
 //

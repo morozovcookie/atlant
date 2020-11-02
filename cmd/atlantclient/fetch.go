@@ -8,12 +8,15 @@ import (
 	"github.com/spf13/cobra"
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/status"
 )
 
 type FetchCommandOptions struct {
 	host *HostFlag
 
 	url *URLFlag
+
+	crt string
 }
 
 func (opts *FetchCommandOptions) Validate() (err error) {
@@ -47,6 +50,14 @@ func (opts *FetchCommandOptions) Run(ctx context.Context, logger *zap.Logger) (e
 			Url: opts.url.String(),
 		})
 	if err != nil {
+		if grpcErr, ok := status.FromError(err); ok {
+			logger.Error("request error",
+				zap.NamedError("error", grpcErr.Err()),
+				zap.String("code", grpcErr.Code().String()),
+				zap.String("message", grpcErr.Message()),
+				zap.Any("details", grpcErr.Details()))
+		}
+
 		return err
 	}
 
@@ -75,6 +86,7 @@ func cmdFetch(logger *zap.Logger) (cmd *cobra.Command) {
 
 	cmd.Flags().StringVar(opts.host.Pointer(), "host", "", "server host")
 	cmd.Flags().StringVar(opts.url.Pointer(), "url", "", "csv resource url")
+	cmd.Flags().StringVar(&opts.crt, "crt", "", "server certificate")
 
 	return cmd
 }
