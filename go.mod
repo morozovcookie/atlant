@@ -3,6 +3,7 @@ module github.com/morozovcookie/atlant
 go 1.15
 
 require (
+	github.com/aidarkhanov/nanoid/v2 v2.0.5
 	github.com/caarlos0/env v3.5.0+incompatible
 	github.com/caarlos0/env/v6 v6.4.0
 	github.com/confluentinc/confluent-kafka-go v1.4.2
