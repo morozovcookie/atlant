@@ -21,7 +21,15 @@ lb -> as++: v1.AtlantService/Fetch
 as -> fs++: Send GET request
 return Request result
 
-' check HTTP result
+alt 5XX Server error
+as -> as: Repeat request
+else 404 Not Found
+as --> lb: Client request error
+lb --> c: File not found
+else Anything else error
+as --> lb: Internal error
+lb --> c: Error
+end
 
 as -> q: Begin transaction
 activate q
