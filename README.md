@@ -35,7 +35,7 @@ In this section you can find a visualisation of how it should work (and maybe so
 
 Let is start from the full picture. This picture represents all components involved in this project.
 
-<!-- place for full picture -->
+![Full Component Diagram](img/full_component_diagram.png)
 
 For the basic two process I decided make a two diagrams: component and sequence, and these diagrams could describe each process very accurate.
 
@@ -45,7 +45,7 @@ Fetch process is a process when you pass csv file url (only http(s) available) t
 I decided to use the Apache Kafka and [the second service](cmd/processor) for guaranteed and asynchronous file data processing. 
 In this case we have more freedom to extend file processing logic because all this stuff will be in the background, hide from the client.
 
-<!-- place for on fetch process -->
+![Fetch Component Diagram](img/fetch_component_diagram.png)
 
 <!-- place for UML diagram -->
 
@@ -55,14 +55,14 @@ This process is very simple: client make a call, atlantserver receive this call,
 In this case we have situation when two services share one database and one collection and this is normal, 
 because first service (processor) using database only for "write" operations, and the second (atlantserver) - only for "read" operations.
 
-<!-- place for on list process -->
+![List Component Diagram](img/list_component_diagram.png)
 
 <!-- place for UML diagram -->
 
 
 # Usage
 
-This project contains for executable files:
+This project contains several executable files:
 
 - [atlantclient](cmd/atlantclient/README.md) - console client for interaction with atlantserver
 - [atlantserver](cmd/atlantserver/README.md) - main but not only one part of this project
