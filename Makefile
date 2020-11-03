@@ -48,6 +48,29 @@ test-unit:
 		coverage.out
 	@echo "+ $@"
 
+# Run system
+.PHONY: run
+run: docker-build run-docker-compose wait-five-seconds create-topic migrate-up
+	@echo "+ $@"
+
+# Run docker-compose.
+.PHONY: run-docker-compose
+run-docker-compose:
+	@echo "+ $@"
+	@docker-compose \
+		-f $(CURRENT_DIR)/scripts/docker/docker-compose.yaml \
+		up \
+		-d
+
+# Stop docker-compose.
+.PHONY: stop
+stop:
+	@echo "+ $@"
+	@docker-compose \
+		-f $(CURRENT_DIR)/scripts/docker/docker-compose.yaml \
+		down \
+		-v
+
 # Build the Docker container.
 .PHONY: docker-build
 docker-build: atlantserver-docker-build processor-docker-build
@@ -59,7 +82,7 @@ atlantserver-docker-build:
 	@echo "+ $@"
 	@docker build \
 		--rm \
-		-f ./scripts/docker/Dockerfile.atlantserver \
+		-f $(CURRENT_DIR)/scripts/docker/Dockerfile.atlantserver \
 		-t atlantserver:latest \
 		.
 
@@ -69,7 +92,7 @@ processor-docker-build:
 	@echo "+ $@"
 	@docker build \
 		--rm \
-		-f ./scripts/docker/Dockerfile.processor \
+		-f $(CURRENT_DIR)/scripts/docker/Dockerfile.processor \
 		-t processor:latest \
 		.
 
@@ -151,3 +174,15 @@ migrate-drop:
 		-database $(MONGODB_DATABASE_URL) \
 		-path $(MONGODB_MIGRATIONS_PATH) \
 		drop
+
+# Create Kafka topic
+.PHONY: create-topic
+create-topic:
+	@echo "+ $@"
+	@sh $(CURRENT_DIR)/scripts/docker/create-topic.sh
+
+# Wait five seconds
+.PHONY: wait-five-seconds
+wait-five-seconds:
+	@echo "+ $@"
+	@sleep 5
