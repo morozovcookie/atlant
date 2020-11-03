@@ -33,7 +33,7 @@ Processor use environment variables as configuration parameters. Below you can s
 </thead>
 <tbody>
 <tr>
-    <td colspan="3"><b>Kafka configuration parameters</b></td>
+    <td colspan="5"><b>Kafka configuration parameters</b></td>
 </tr>
 <tr>
     <td>KAFKA_PRODUCT_CONSUMER_SERVERS</td>
@@ -43,7 +43,7 @@ Processor use environment variables as configuration parameters. Below you can s
     <td></td>
 </tr>
 <tr>
-    <td colspan="3"><b>MongoDB configuration parameters</b></td>
+    <td colspan="5"><b>MongoDB configuration parameters</b></td>
 </tr>
 <tr>
     <td>MONGODB_URI</td>
