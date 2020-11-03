@@ -21,10 +21,13 @@ This project represent my own variant of realization test from Tensigma LTD. Ful
 
 Below you can find list of minimal requirements of items which I used for building this project:
 
-- GoLang >=1.15.3
-- GoLangCI-Lint >=1.31.0
+- GoLang >= 1.15.3
+- GoLangCI-Lint >= 1.31.0
 - Docker >= 19.03.13
 - Docker-Compose >= 1.27.4
+- Kafka = 2.6.0 (Scala 2.13)
+- Zookeeper = 3.4.13
+- MongoDB = 4.4.1-3
 
 
 # Architecture
