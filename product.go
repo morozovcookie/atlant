@@ -131,6 +131,8 @@ func (p Product) ID() (id string) {
 	return hex.EncodeToString(hs[:])
 }
 
+var ErrFileDoesNotExist = errors.New("file with specified URL does not exist")
+
 // ProductFetcher fetch products list from external resource.
 type ProductFetcher interface {
 	// Fetch get products list from external source by url.
