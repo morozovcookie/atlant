@@ -1,0 +1,40 @@
+@startuml List Command Sequence Diagram
+
+skinparam sequenceArrowThickness 2
+skinparam maxMessageSize 384
+skinparam sequenceMessageAlign center
+skinparam sequenceParticipant underlines
+skinparam defaultTextAlignment center
+
+actor Client as c order 1
+participant "Load Balancer" as lb order 2
+participant "Atlant Server" as as order 3
+database "Products Storage" as mongo order 4
+
+c -> lb++: List request
+
+lb -> as++: v1.AtlantService/List
+
+as -> as: Validate request parameters
+
+alt Invalid request parameter
+as --> lb: Invalid parameter
+lb --> c: Error
+else Limit value less than min value or is zero
+as -> as: Set it to maximum
+else Limit value greater than max value
+as -> as: Set it to maximum
+end
+
+as -> mongo++: Retrieve objects with request filters
+return Request result
+alt Request error
+as --> lb: Internal error
+lb --> c: Error
+end
+
+return
+
+return
+
+@enduml

@@ -47,7 +47,7 @@ In this case we have more freedom to extend file processing logic because all th
 
 ![Fetch Component Diagram](img/fetch_component_diagram.png)
 
-<!-- place for UML diagram -->
+![Fetch Sequence Diagram](img/fetch_command_sequence_diagram.png)
 
 ## List process
 
@@ -57,7 +57,7 @@ because first service (processor) using database only for "write" operations, an
 
 ![List Component Diagram](img/list_component_diagram.png)
 
-<!-- place for UML diagram -->
+![List Sequence Diagram](img/list_command_sequence_diagram.png)
 
 
 # Usage
