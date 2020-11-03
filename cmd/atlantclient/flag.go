@@ -36,15 +36,15 @@ func (f *HostFlag) Pointer() (p *string) {
 }
 
 func (f HostFlag) Validate() (err error) {
-	if f.String() == "" {
-		return ErrEmptyHostFlag
-	}
-
-	r := regexp.MustCompile(`^(((\d{1,3}\.){3}(\d{1,3}))|((\w+\.){2}(\w+))):(\d{4,5})$`)
-
-	if !r.MatchString(f.String()) {
-		return errors.New(ErrInvalidHostValue.Error() + ": " + f.String())
-	}
+	//if f.String() == "" {
+	//	return ErrEmptyHostFlag
+	//}
+	//
+	//r := regexp.MustCompile(`^(((\d{1,3}\.){3}(\d{1,3}))|((\w+\.){2}(\w+))):(\d{4,5})$`)
+	//
+	//if !r.MatchString(f.String()) {
+	//	return errors.New(ErrInvalidHostValue.Error() + ": " + f.String())
+	//}
 
 	return nil
 }
@@ -64,7 +64,7 @@ func (f URLFlag) Validate() (err error) {
 		return ErrEmptyURLFlag
 	}
 
-	r := regexp.MustCompile(`(http|https)://[\w\-_]+(\.[\w\-_]+)+([\w\-.,@?^=%&amp;:/~+#]*[\w\-@?^=%&amp;/~+#])?`)
+	r := regexp.MustCompile(`(\b(https?|ftp|file)://)?[-A-Za-z0-9+&@#/%?=~_|!:,.;]+[-A-Za-z0-9+&@#/%=~_|]`)
 
 	if !r.MatchString(f.String()) {
 		return errors.New(ErrInvalidURLValue.Error() + ": " + f.String())

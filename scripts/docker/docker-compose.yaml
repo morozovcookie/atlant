@@ -1,49 +1,130 @@
 version: '3'
 
 networks:
-  zookeeper-kafka:
+  ingress_atlantserver:
     external: false
-  kafdrop-kafka:
+  atlantserver_kafka:
     external: false
-  mongodb:
+  atlantserver_fileserver:
+    external: false
+  atlantserver_mongodb:
+    external: false
+  kafka_zookeeper:
+    external: false
+  kafka_kafdrop:
+    external: false
+  kafka_processor:
+    external: false
+  processor_mongodb:
     external: false
 
 volumes:
   zookeeper:
     driver: local
-
   kafka-1:
     driver: local
   kafka-2:
     driver: local
   kafka-3:
     driver: local
-
   mongodb-1:
     driver: local
 
 services:
-  # messaging
-  zookeeper:
-    image: wurstmeister/zookeeper #@sha256:3f43f72cb2832e7a5fbed7f7dbcd0c43004357974d8f32555d101bd53e81e74f
-    container_name: atlant-zookeeper
+  # ingress
+  ingress:
+    image: nginx@sha256:a411d06ab4f5347ac9652357ac35600555aeff0b910326cc7adc36d471e0b36f
+    container_name: atlant-ingress
     expose:
-    - 2181
-    networks:
-    - zookeeper-kafka
+    - 3001
+    ports:
+    - 3001:3001
     volumes:
-    - zookeeper:/var/zookeeper
-    - /var/run/docker.sock:/var/run/docker.sock
+    - ./atlantserver.nginx.conf:/etc/nginx/conf.d/default.conf
+    networks:
+    - ingress_atlantserver
+    depends_on:
+    - atlantserver-1
+    - atlantserver-2
+    - atlantserver-3
 
+
+  # atlantserver instances
+  atlantserver-1:
+    image: atlantserver:latest
+    container_name: atlant-server-1
+    expose:
+    - 8080
+    environment:
+      RPC_SERVER_HOST: 0.0.0.0:8080
+      KAFKA_PRODUCT_PRODUCER_SERVERS: kafka-1:29092,kafka-2:29092,kafka-3:29092
+      MONGODB_URI: mongodb://mongodb-1:27017/atlant
+    networks:
+    - ingress_atlantserver
+    - atlantserver_kafka
+    - atlantserver_fileserver
+    - atlantserver_mongodb
+    depends_on:
+    - kafka-1
+    - kafka-2
+    - kafka-3
+    - fileserver
+    - mongodb-1
+
+  atlantserver-2:
+    image: atlantserver:latest
+    container_name: atlant-server-2
+    expose:
+    - 8080
+    environment:
+      RPC_SERVER_HOST: 0.0.0.0:8080
+      KAFKA_PRODUCT_PRODUCER_SERVERS: kafka-1:29092,kafka-2:29092,kafka-3:29092
+      MONGODB_URI: mongodb://mongodb-1:27017/atlant
+    networks:
+    - ingress_atlantserver
+    - atlantserver_kafka
+    - atlantserver_fileserver
+    - atlantserver_mongodb
+    depends_on:
+    - kafka-1
+    - kafka-2
+    - kafka-3
+    - fileserver
+    - mongodb-1
+
+  atlantserver-3:
+    image: atlantserver:latest
+    container_name: atlant-server-3
+    expose:
+    - 8080
+    environment:
+      RPC_SERVER_HOST: 0.0.0.0:8080
+      KAFKA_PRODUCT_PRODUCER_SERVERS: kafka-1:29092,kafka-2:29092,kafka-3:29092
+      MONGODB_URI: mongodb://mongodb-1:27017/atlant
+    networks:
+    - ingress_atlantserver
+    - atlantserver_kafka
+    - atlantserver_fileserver
+    - atlantserver_mongodb
+    depends_on:
+    - kafka-1
+    - kafka-2
+    - kafka-3
+    - fileserver
+    - mongodb-1
+
+
+  # messaging
   kafka-1:
     image: wurstmeister/kafka@sha256:9be6d5ae19a6455998883fffe0e46ac9dcbee4d09861c791df97ed1883f03c49
     container_name: atlant-kafka-1
-    ports:
-    - 9092:9092
+    expose:
+    - 29092
+    - 9092
     environment:
       KAFKA_BROKER_ID: 1
       KAFKA_LISTENERS: INTERNAL://:29092,EXTERNAL://:9092
-      KAFKA_ADVERTISED_LISTENERS: INTERNAL://kafka-1:29092,EXTERNAL://localhost:9092
+      KAFKA_ADVERTISED_LISTENERS: INTERNAL://kafka-1:29092,EXTERNAL://kafka-1:9092
       KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: INTERNAL:PLAINTEXT,EXTERNAL:PLAINTEXT
       KAFKA_INTER_BROKER_LISTENER_NAME: INTERNAL
       KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
@@ -52,21 +133,26 @@ services:
       KAFKA_REPLICA_FETCH_WAIT_MAX_MS: 200
       KAFKA_REPLICE_LAG_TIME_MAX_MS: 1000
     networks:
-    - zookeeper-kafka
-    - kafdrop-kafka
+    - atlantserver_kafka
+    - kafka_zookeeper
+    - kafka_kafdrop
+    - kafka_processor
     volumes:
     - kafka-1:/tmp/kafka-logs
     - /var/run/docker.sock:/var/run/docker.sock
+    depends_on:
+    - zookeeper
 
   kafka-2:
     image: wurstmeister/kafka@sha256:9be6d5ae19a6455998883fffe0e46ac9dcbee4d09861c791df97ed1883f03c49
     container_name: atlant-kafka-2
-    ports:
-    - 9093:9093
+    expose:
+    - 29092
+    - 9092
     environment:
       KAFKA_BROKER_ID: 2
-      KAFKA_LISTENERS: INTERNAL://:29093,EXTERNAL://:9093
-      KAFKA_ADVERTISED_LISTENERS: INTERNAL://kafka-2:29093,EXTERNAL://localhost:9093
+      KAFKA_LISTENERS: INTERNAL://:29092,EXTERNAL://:9092
+      KAFKA_ADVERTISED_LISTENERS: INTERNAL://kafka-2:29092,EXTERNAL://kafka-2:9092
       KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: INTERNAL:PLAINTEXT,EXTERNAL:PLAINTEXT
       KAFKA_INTER_BROKER_LISTENER_NAME: INTERNAL
       KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
@@ -75,21 +161,26 @@ services:
       KAFKA_REPLICA_FETCH_WAIT_MAX_MS: 200
       KAFKA_REPLICE_LAG_TIME_MAX_MS: 1000
     networks:
-    - zookeeper-kafka
-    - kafdrop-kafka
+    - atlantserver_kafka
+    - kafka_zookeeper
+    - kafka_kafdrop
+    - kafka_processor
     volumes:
     - kafka-2:/tmp/kafka-logs
     - /var/run/docker.sock:/var/run/docker.sock
+    depends_on:
+    - zookeeper
 
   kafka-3:
     image: wurstmeister/kafka@sha256:9be6d5ae19a6455998883fffe0e46ac9dcbee4d09861c791df97ed1883f03c49
     container_name: atlant-kafka-3
-    ports:
-    - 9094:9094
+    expose:
+    - 29092
+    - 9092
     environment:
       KAFKA_BROKER_ID: 3
-      KAFKA_LISTENERS: INTERNAL://:29094,EXTERNAL://:9094
-      KAFKA_ADVERTISED_LISTENERS: INTERNAL://kafka-3:29094,EXTERNAL://localhost:9094
+      KAFKA_LISTENERS: INTERNAL://:29092,EXTERNAL://:9092
+      KAFKA_ADVERTISED_LISTENERS: INTERNAL://kafka-3:29092,EXTERNAL://kafka-3:9092
       KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: INTERNAL:PLAINTEXT,EXTERNAL:PLAINTEXT
       KAFKA_INTER_BROKER_LISTENER_NAME: INTERNAL
       KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
@@ -98,34 +189,123 @@ services:
       KAFKA_REPLICA_FETCH_WAIT_MAX_MS: 200
       KAFKA_REPLICE_LAG_TIME_MAX_MS: 1000
     networks:
-    - zookeeper-kafka
-    - kafdrop-kafka
+    - atlantserver_kafka
+    - kafka_zookeeper
+    - kafka_kafdrop
+    - kafka_processor
     volumes:
     - kafka-3:/tmp/kafka-logs
     - /var/run/docker.sock:/var/run/docker.sock
+    depends_on:
+    - zookeeper
 
-  kafdrop:
-    image: obsidiandynamics/kafdrop@sha256:b7ba8577ce395b1975b0ed98bb53cb6b13e7d32d5442188da1ce41c0838d1ce9
-    container_name: atlant-kafdrop
-    ports:
-      - 9001:9000
-    environment:
-      KAFKA_BROKERCONNECT: kafka-1:29092,kafka-2:29093,kafka-3:29094
-      JVM_OPTS: -Xms16M -Xmx48M -Xss180K -XX:-TieredCompilation -XX:+UseStringDeduplication -noverify
+
+  # fileserver
+  fileserver:
+    image: nginx@sha256:a411d06ab4f5347ac9652357ac35600555aeff0b910326cc7adc36d471e0b36f
+    container_name: atlant-fileserver
+    expose:
+    - 8080
     networks:
-    - kafdrop-kafka
+    - atlantserver_fileserver
+    volumes:
+    - ./fileserver.nginx.conf:/etc/nginx/conf.d/default.conf
+    - ./staticfiles:/usr/share/nginx/html:ro
 
-  # storage
+
+  # mongodb
   mongodb-1:
     image: percona/percona-server-mongodb@sha256:ebceb35753589d2912dbfa2cf6f6e9e3d6fc5ac311dea26d027104788bc283fd
     container_name: atlant-mongodb-1
     ports:
     - 27017:27017
     networks:
-    - mongodb
+    - atlantserver_mongodb
+    - processor_mongodb
     volumes:
     - mongodb-1:/data/mongodb-1
 
-  # balancer
 
-  # application
+  # zookeeper (kafka deps)
+  zookeeper:
+    image: wurstmeister/zookeeper #@sha256:3f43f72cb2832e7a5fbed7f7dbcd0c43004357974d8f32555d101bd53e81e74f
+    container_name: atlant-zookeeper
+    expose:
+    - 2181
+    networks:
+    - kafka_zookeeper
+    volumes:
+    - zookeeper:/var/zookeeper
+    - /var/run/docker.sock:/var/run/docker.sock
+
+
+  # kafdrop (kafka web ui client)
+  kafdrop:
+    image: obsidiandynamics/kafdrop@sha256:b7ba8577ce395b1975b0ed98bb53cb6b13e7d32d5442188da1ce41c0838d1ce9
+    container_name: atlant-kafdrop
+    ports:
+    - 9001:9000
+    environment:
+      KAFKA_BROKERCONNECT: kafka-1:29092,kafka-2:29092,kafka-3:29092
+      JVM_OPTS: -Xms16M -Xmx48M -Xss180K -XX:-TieredCompilation -XX:+UseStringDeduplication -noverify
+    networks:
+    - kafka_kafdrop
+    depends_on:
+    - kafka-1
+    - kafka-2
+    - kafka-3
+
+
+  # processor instances
+  processor-1:
+    image: processor:latest
+    container_name: atlant-processor-1
+    environment:
+      KAFKA_PRODUCT_CONSUMER_SERVERS: kafka-1:29092,kafka-2:29092,kafka-3:29092
+      MONGODB_URI: mongodb://mongodb-1:27017/atlant
+    networks:
+    - kafka_processor
+    - processor_mongodb
+    depends_on:
+    - kafka-1
+    - kafka-2
+    - kafka-3
+    - mongodb-1
+
+  processor-2:
+    image: processor:latest
+    container_name: atlant-processor-2
+    environment:
+      KAFKA_PRODUCT_CONSUMER_SERVERS: kafka-1:29092,kafka-2:29092,kafka-3:29092
+      MONGODB_URI: mongodb://mongodb-1:27017/atlant
+    networks:
+    - kafka_processor
+    - processor_mongodb
+    depends_on:
+    - kafka-1
+    - kafka-2
+    - kafka-3
+    - mongodb-1
+
+  processor-3:
+    image: processor:latest
+    container_name: atlant-processor-3
+    environment:
+      KAFKA_PRODUCT_CONSUMER_SERVERS: kafka-1:29092,kafka-2:29092,kafka-3:29092
+      MONGODB_URI: mongodb://mongodb-1:27017/atlant
+    networks:
+    - kafka_processor
+    - processor_mongodb
+    depends_on:
+    - kafka-1
+    - kafka-2
+    - kafka-3
+    - mongodb-1
+
+
+  # logging system (loki)
+  #
+
+
+  # metrics
+  #

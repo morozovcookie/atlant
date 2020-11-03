@@ -19,7 +19,7 @@ import (
 	_ "go.uber.org/automaxprocs"
 	"go.uber.org/zap"
 	"golang.org/x/sync/errgroup"
-	ggrpc "google.golang.org/grpc"
+	stdgrpc "google.golang.org/grpc"
 )
 
 const (
@@ -47,35 +47,30 @@ func main() {
 		logger.Fatal("create mongodb client error", zap.Error(err))
 	}
 
-	var s *grpc.Server
-	{
-		atlantSvc := svcV1.NewAtlantService(
-			initContainer(p, mc, logger),
-			logger.With(zap.String("component", "atlant_service")))
-
-		s = grpc.NewServer(
-			cfg.RPCServerConfig.Host,
-			logger.With(zap.String("component", "grpc_server")),
-			grpc.WithServiceRegistrator(func(gs *ggrpc.Server) {
-				svcV1.RegisterAtlantServiceServer(gs, atlantSvc)
-			}))
-	}
+	s := initServer(cfg, p, mc, logger)
 
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
 
 	logger.Info("starting application")
 
-	eg := errgroup.Group{}
-	eg.Go(s.Start)
+	eg, ctx := errgroup.WithContext(context.Background())
+	eg.Go(s.ListenAndServe)
 
 	logger.Info("application started")
-	<-quit
+
+	select {
+	case <-quit:
+		break
+	case <-ctx.Done():
+		break
+	}
+
 	logger.Info("stopping application")
 
 	p.Close(context.Background())
 
-	s.Stop()
+	s.Close()
 
 	if err = mc.Close(context.Background()); err != nil {
 		logger.Error("mongodb client close error", zap.Error(err))
@@ -109,12 +104,17 @@ func initContainer(p kafkaV1.Producer, mc mongodb.MongoCollector, logger *zap.Lo
 }
 
 func initProducer(cfg *config.Config, logger *zap.Logger) (p *producer.Producer, err error) {
+	hn, err := os.Hostname()
+	if err != nil {
+		return nil, err
+	}
+
 	p, err = producer.New(
 		logger.With(zap.String("component", "product_producer")),
 		producer.WithServers(cfg.KafkaProductProducerConfig.Servers),
 		producer.WithTopic("docker.atlant.cdc.products.0"),
 		producer.WithAcknowledgement(producer.AcknowledgementWaitAll),
-		producer.WithTransactionalID(appname+"-"+cfg.Hostname),
+		producer.WithTransactionalID(appname+"-"+hn),
 		producer.WithIdempotenceState(producer.IdempotenceEnabledState),
 		producer.WithCompressionType(producer.CompressionTypeGzip))
 	if err != nil {
@@ -151,4 +151,24 @@ func initLogger() (logger *zap.Logger, err error) {
 	logger = logger.With(zap.String("app", appname))
 
 	return logger, nil
+}
+
+func initServer(
+	cfg *config.Config,
+	p kafkaV1.Producer,
+	mc mongodb.MongoCollector,
+	logger *zap.Logger,
+) (
+	s *grpc.Server,
+) {
+	atlantSvc := svcV1.NewAtlantService(
+		initContainer(p, mc, logger),
+		logger.With(zap.String("component", "atlant_service")))
+
+	return grpc.NewServer(
+		cfg.RPCServerConfig.Host,
+		logger.With(zap.String("component", "grpc_server")),
+		grpc.WithServiceRegistrator(func(s *stdgrpc.Server) {
+			svcV1.RegisterAtlantServiceServer(s, atlantSvc)
+		}))
 }

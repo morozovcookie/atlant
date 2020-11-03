@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-
+	"github.com/aidarkhanov/nanoid/v2"
 	"github.com/morozovcookie/atlant"
 	"go.uber.org/zap"
 )
@@ -27,7 +27,7 @@ func NewProductStorer(producer Producer, logger *zap.Logger) (ps *ProductStorer)
 }
 
 //
-func (s *ProductStorer) Store(ctx context.Context, pp ...atlant.Product) (err error) {
+func (s *ProductStorer) Store(ctx context.Context, reqID string, pp ...atlant.Product) (err error) {
 	if len(pp) == 0 {
 		return nil
 	}
@@ -49,17 +49,24 @@ func (s *ProductStorer) Store(ctx context.Context, pp ...atlant.Product) (err er
 	for _, p := range pp {
 		var (
 			pb = struct {
-				Name      string  `json:"name"`
-				Price     float64 `json:"price"`
 				CreatedAt int64   `json:"created_at"`
+				Price     float64 `json:"price"`
+				Name      string  `json:"name"`
+				ChangeID  string  `json:"change_id"`
+				RequestID string  `json:"request_id"`
 			}{
-				Name:      p.Name,
-				Price:     p.Price,
-				CreatedAt: p.CreatedAt.UnixNano(),
+				CreatedAt: p.CreatedAt().UnixNano(),
+				Price:     p.Price(),
+				Name:      p.Name(),
+				RequestID: reqID,
 			}
 
 			bb = &bytes.Buffer{}
 		)
+
+		if pb.ChangeID, err = nanoid.New(); err != nil {
+			return err
+		}
 
 		if err = json.NewEncoder(bb).Encode(pb); err != nil {
 			return err

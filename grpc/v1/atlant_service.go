@@ -3,6 +3,8 @@ package v1
 import (
 	"context"
 	stderrors "errors"
+	"fmt"
+	"github.com/aidarkhanov/nanoid/v2"
 	"net/url"
 
 	"github.com/golang/protobuf/ptypes/empty"
@@ -45,7 +47,12 @@ func NewAtlantService(config AtlantServiceConfig, logger *zap.Logger) *AtlantSer
 
 //
 func (s *AtlantService) Fetch(ctx context.Context, r *FetchRequest) (_ *empty.Empty, err error) {
-	reqRecvT := s.clock.NowInUTC()
+	reqID, err := nanoid.New()
+	if err != nil {
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+
+	s.logger.Info("receive Fetch request", zap.String("request", fmt.Sprintf("%+v", r)))
 
 	u, err := url.Parse(r.Url)
 	if err != nil {
@@ -56,14 +63,14 @@ func (s *AtlantService) Fetch(ctx context.Context, r *FetchRequest) (_ *empty.Em
 
 	// Optional: think about different protocols and fetchers factory depends on protocols type
 
-	pp, err := s.fetcher.Fetch(ctx, u, reqRecvT)
+	pp, err := s.fetcher.Fetch(ctx, u, s.clock.NowInUTC())
 	if err != nil {
 		s.logger.Error("fetch error", zap.Error(err))
 
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
-	if err = s.storer.Store(ctx, pp...); err != nil {
+	if err = s.storer.Store(ctx, reqID, pp...); err != nil {
 		s.logger.Error("store error", zap.Error(err))
 
 		return nil, status.Error(codes.Internal, err.Error())
@@ -76,6 +83,8 @@ var ErrUnknownSortingDirection = errors.New("unknown sorting direction")
 
 //
 func (s *AtlantService) List(ctx context.Context, req *ListRequest) (res *ListResponse, err error) {
+	s.logger.Info("receive List request", zap.String("request", fmt.Sprintf("%+v", req)))
+
 	var (
 		start = atlant.NewStartParameter(req.Start)
 		limit = atlant.NewLimitParameter(req.Limit)
@@ -107,17 +116,18 @@ func (s *AtlantService) List(ctx context.Context, req *ListRequest) (res *ListRe
 
 	for i, p := range pp {
 		res.Products[i] = &ListResponse_Product{
-			Name:        p.Name,
-			Price:       p.Price,
-			CreatedAt:   p.CreatedAt.UnixNano(),
-			UpdatedAt:   p.UpdatedAt.UnixNano(),
-			UpdateCount: int32(p.UpdateCount),
+			Name:        p.Name(),
+			Price:       p.Price(),
+			CreatedAt:   p.CreatedAt().UnixNano(),
+			UpdatedAt:   p.UpdatedAt().UnixNano(),
+			UpdateCount: int32(p.UpdateCount()),
 		}
 	}
 
 	return res, nil
 }
 
+//
 func initSortingOptions(reqOpts []*ListRequest_SortingOption) (opts atlant.ProductSortingOptions, err error) {
 	opts = make(atlant.ProductSortingOptions, len(reqOpts))
 
@@ -140,6 +150,7 @@ func initSortingOptions(reqOpts []*ListRequest_SortingOption) (opts atlant.Produ
 	return opts, nil
 }
 
+//
 func validateListRequestParameters(
 	start atlant.StartParameter,
 	limit *atlant.LimitParameter,

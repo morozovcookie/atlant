@@ -53,14 +53,19 @@ func main() {
 
 	logger.Info("starting application")
 
-	eg := &errgroup.Group{}
+	eg, ctx := errgroup.WithContext(context.Background())
 	eg.Go(func() error {
 		return c.Subscribe(pp.ProcessProduct)
 	})
 
 	logger.Info("application started")
 
-	<-quit
+	select {
+	case <-quit:
+		break
+	case <-ctx.Done():
+		break
+	}
 
 	logger.Info("application stopping")
 
@@ -83,10 +88,11 @@ func initConsumer(cfg *config.Config, logger *zap.Logger) (c *consumer.Consumer,
 	return consumer.New(
 		context.Background(),
 		logger.With(zap.String("component", "product_consumer")),
-		consumer.WithServers(cfg.KafkaProductProducerConfig.Servers),
+		consumer.WithServers(cfg.KafkaProductConsumerConfig.Servers),
 		consumer.WithTopic("docker.atlant.cdc.products.0"),
 		consumer.WithGroupID(appname),
-		consumer.WithIsolationLevel(consumer.IsolationLevelReadCommitted))
+		consumer.WithIsolationLevel(consumer.IsolationLevelReadCommitted),
+		consumer.WithAutoOffsetReset(consumer.AutoOffsetResetEarliest))
 }
 
 func initMongoDB(cfg *config.Config) (mc *mongodb.Client, err error) {

@@ -66,16 +66,26 @@ This project contains for executable files:
 
 - [atlantclient](cmd/atlantclient/README.md) - console client for interaction with atlantserver
 - [atlantserver](cmd/atlantserver/README.md) - main but not only one part of this project
-- [fileserver](cmd/fileserver/README.md) - helpful HTTP-server for serving files (maybe the easiest way was using nginx for serving static 🤔)
 - [processor](cmd/processor/README.md) - this little service responsible for saving line from csv-file into MongoDB
 
 More about each project component you can find in specified README files.
 
+For using all project components you can use next commands:
+
+```bash
+# Build and run containers, create topic and apply migrations
+$ make run
+
+
+# Stop project
+$ make stop
+```
 
 # TODO
 
 Here is list of some features that could be implemented in the future:
 
+- [x] Finish docker-compose deploy
 - [ ] Metrics
 - [ ] Liveness/Readiness probes
 - [ ] Producer and consumer compression
@@ -88,7 +98,13 @@ Here is list of some features that could be implemented in the future:
     - [ ] Functional tests
 - [ ] GitHub Actions
 - [ ] Code docs
-- [ ] Write changes history on products fetching
+- [x] Use earliest offset in Kafka and changes history for indempotence
+- [x] Write changes history on products fetching
 - [ ] Move Kafka from wurstmeister to confluentc
 - [ ] Support more protocols, not only http(s)
 - [ ] Use high-availability MongoDB cluster
+- [ ] Move from Nginx ingres to Envoy mesh network
+- [ ] Replace JSON with Avro
+- [ ] Configurable encoders and decoders
+- [ ] Verify Kafka Cluster high availability
+- [ ] Circuit breaker for file fetcher

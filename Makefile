@@ -4,7 +4,7 @@ GOPATH       = $(shell go env GOPATH)
 CGO_ENABLED  = 0
 GOOS        ?= linux
 GOARCH      ?= amd64
-GOFLAGS      = CGO_ENABLED=$(CGO_ENABLED) GOOS=$(GOOS) GOARCH=$(GOARCH)
+GOFLAGS      = GOOS=$(GOOS) GOARCH=$(GOARCH)
 
 MONGODB_HOST            ?= 127.0.0.1
 MONGODB_PORT            ?= 27017
@@ -48,22 +48,60 @@ test-unit:
 		coverage.out
 	@echo "+ $@"
 
-# Locally run the application, e.g. node index.js, python -m myapp, go run myapp etc ...
+# Run system
 .PHONY: run
-run:
+run: docker-build run-docker-compose wait-five-seconds create-topic migrate-up
 	@echo "+ $@"
+
+# Run docker-compose.
+.PHONY: run-docker-compose
+run-docker-compose:
+	@echo "+ $@"
+	@docker-compose \
+		-f $(CURRENT_DIR)/scripts/docker/docker-compose.yaml \
+		up \
+		-d
+
+# Stop docker-compose.
+.PHONY: stop
+stop:
+	@echo "+ $@"
+	@docker-compose \
+		-f $(CURRENT_DIR)/scripts/docker/docker-compose.yaml \
+		down \
+		-v
 
 # Build the Docker container.
 .PHONY: docker-build
-docker-build:
+docker-build: atlantserver-docker-build processor-docker-build
 	@echo "+ $@"
+
+# Build atlantserver docker image.
+.PHONY: atlantserver-docker-build
+atlantserver-docker-build:
+	@echo "+ $@"
+	@docker build \
+		--rm \
+		-f $(CURRENT_DIR)/scripts/docker/Dockerfile.atlantserver \
+		-t atlantserver:latest \
+		.
+
+# Build processor docker image.
+.PHONY: processor-docker-build
+processor-docker-build:
+	@echo "+ $@"
+	@docker build \
+		--rm \
+		-f $(CURRENT_DIR)/scripts/docker/Dockerfile.processor \
+		-t processor:latest \
+		.
 
 # Build the binaries.
 .PHONY: go-build
-go-build: atlantserver-build atlantclient-build csvgen-build fileserver-build
+go-build: atlantserver-build atlantclient-build processor-build
 	@echo "+ $@"
 
-# Build the binaries.
+# Build the atlantserver binary.
 .PHONY: atlantserver-build
 atlantserver-build:
 	@echo "+ $@"
@@ -72,32 +110,23 @@ atlantserver-build:
 		-o $(CURRENT_DIR)/out/atlantserver \
 		$(CURRENT_DIR)/cmd/atlantserver/main.go
 
-# Build the binaries.
+# Build the atlantclient binary.
 .PHONY: atlantclient-build
 atlantclient-build:
+	@echo "+ $@"
+	@CGO_ENABLED = 0 $(GOFLAGS) go build \
+		-ldflags "-s -w" \
+		-o $(CURRENT_DIR)/out/atlantclient \
+		$(CURRENT_DIR)/cmd/atlantclient/main.go
+
+# Build the processor binary.
+.PHONY: processor-build
+processor-build:
 	@echo "+ $@"
 	@$(GOFLAGS) go build \
 		-ldflags "-s -w" \
 		-o $(CURRENT_DIR)/out/atlantclient \
 		$(CURRENT_DIR)/cmd/atlantclient/main.go
-
-# Build the csvgen binary.
-.PHONY: csvgen-build
-csvgen-build:
-	@echo "+ $@"
-	@$(GOFLAGS) go build \
-		-ldflags "-s -w" \
-		-o $(CURRENT_DIR)/out/csvgen \
-		$(CURRENT_DIR)/cmd/csvgen/main.go
-
-# Build the fileserver binary.
-.PHONY: fileserver-build
-fileserver-build:
-	@echo "+ $@"
-	@$(GOFLAGS) go build \
-		-ldflags "-s -w" \
-		-o $(CURRENT_DIR)/out/fileserver \
-		$(CURRENT_DIR)/cmd/fileserver/main.go
 
 # Build the application with werf.
 .PHONY: werf-build
@@ -145,3 +174,15 @@ migrate-drop:
 		-database $(MONGODB_DATABASE_URL) \
 		-path $(MONGODB_MIGRATIONS_PATH) \
 		drop
+
+# Create Kafka topic
+.PHONY: create-topic
+create-topic:
+	@echo "+ $@"
+	@sh $(CURRENT_DIR)/scripts/docker/create-topic.sh
+
+# Wait five seconds
+.PHONY: wait-five-seconds
+wait-five-seconds:
+	@echo "+ $@"
+	@sleep 5

@@ -1,0 +1,25 @@
+FROM golang@sha256:f863dcd1862eff2a2d27b4b801f60c14384f3021fa9061904a077b6dae94fbf0 as build
+
+WORKDIR /processor
+
+ADD go.mod go.sum ./
+
+RUN go mod download
+
+ADD product.go ./
+
+ADD ./kafka/consumer ./kafka/consumer/
+ADD ./kafka/v1 ./kafka/v1/
+ADD ./kafka/*.go ./kafka/
+
+ADD ./mongodb ./mongodb/
+
+ADD ./cmd/processor ./cmd/processor
+
+RUN GOOS=linux GOARCH=amd64 go build -ldflags "-s -w" -o ./out/processor ./cmd/processor/main.go
+
+FROM gcr.io/distroless/base@sha256:249859465bcde1cb15128ff0d9eb2bb54de67f72a834a7576e6649cfe0a27698 as final
+
+COPY --from=build /processor/out/processor /
+
+ENTRYPOINT ["/processor"]
