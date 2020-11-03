@@ -12,7 +12,6 @@ import (
 	"github.com/spf13/cobra"
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/status"
 )
 
@@ -24,8 +23,6 @@ type ListCommandOptions struct {
 	limit *LimitFlag
 
 	sort *SortFlag
-
-	crt string
 }
 
 func (opts *ListCommandOptions) Validate() (err error) {
@@ -55,18 +52,7 @@ func (opts *ListCommandOptions) Validate() (err error) {
 }
 
 func (opts ListCommandOptions) Run(ctx context.Context, logger *zap.Logger) (err error) {
-	dialOpt := grpc.WithInsecure()
-
-	if opts.crt != "" {
-		creds, err := credentials.NewServerTLSFromFile(opts.crt, "")
-		if err != nil {
-			return err
-		}
-
-		dialOpt = grpc.WithTransportCredentials(creds)
-	}
-
-	conn, err := grpc.DialContext(ctx, opts.host.String(), dialOpt)
+	conn, err := grpc.DialContext(ctx, opts.host.String(), grpc.WithInsecure())
 	if err != nil {
 		return err
 	}
@@ -163,7 +149,6 @@ func cmdList(logger *zap.Logger) (cmd *cobra.Command) {
 	cmd.Flags().Int64Var(opts.start.Pointer(), "start", 0, "start position")
 	cmd.Flags().Int64Var(opts.limit.Pointer(), "limit", 0, "items per page")
 	cmd.Flags().StringSliceVar(opts.sort.Pointer(), "sort", nil, "sorting parameters")
-	cmd.Flags().StringVar(&opts.crt, "crt", "", "server certificate")
 
 	return cmd
 }
