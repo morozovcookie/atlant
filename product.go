@@ -11,7 +11,7 @@ import (
 	"github.com/stretchr/testify/mock"
 )
 
-// ProductChanging represent record about products price changing
+// ProductChanging represent record about products price changing.
 type ProductChanging struct {
 	// OldPrice is a product price before changing
 	OldPrice float64 `bson:"old_price"`
@@ -62,8 +62,7 @@ func NewProduct(name string, price float64, createdAt time.Time) (p *Product) {
 		name:                   name,
 		createdAt:              createdAt,
 		updatedAt:              time.Unix(0, 0),
-		changeHistoryDataIndex: make(map[string]*ProductChanging, 0),
-		changeHistoryData:      make([]ProductChanging, 0),
+		changeHistoryDataIndex: make(map[string]*ProductChanging),
 	}
 }
 
@@ -100,6 +99,7 @@ func (p Product) ChangeHistory() (ch []ProductChanging) {
 //
 func (p Product) HasChangeBeenApplied(changeID string) (hasBeenApplied bool) {
 	_, hasBeenApplied = p.changeHistoryDataIndex[changeID]
+
 	return hasBeenApplied
 }
 
@@ -110,7 +110,7 @@ func (p Product) HasPriceBeenChanged(price float64) (hasPriceChanged bool) {
 
 //
 func (p *Product) ApplyChange(c *ProductChanging) {
-	p.updateCount = p.updateCount + 1
+	p.updateCount++
 	p.price = c.NewPrice
 	p.updatedAt = c.CreatedAt
 
@@ -179,7 +179,7 @@ func (p StartParameter) Int64() (val int64) {
 //
 const MinStartParameterValue int64 = 0
 
-//
+// ErrInvalidStartParameterValue raised when start value less than zero.
 var ErrInvalidStartParameterValue = errors.New(`"start" value should be greater or equal zero`)
 
 //
@@ -213,10 +213,10 @@ const (
 )
 
 var (
-	//
+	// ErrInvalidLimitParameterMinValue raise when limit value less than 1.
 	ErrInvalidLimitParameterMinValue = errors.New(`"limit" value should be greater or equal 1`)
 
-	//
+	// ErrInvalidLimitParameterMaxValue raise when limit value greater than maximum value (100).
 	ErrInvalidLimitParameterMaxValue = errors.New(`"limit" value should be less or equal 100`)
 )
 
@@ -242,10 +242,11 @@ func (f SortingField) String() (s string) {
 }
 
 var (
-	//
-	ErrUnknownField                = errors.New("unknown field")
+	// ErrUnknownField raise when unknown field was passed in sorting parameters.
+	ErrUnknownField = errors.New("unknown field")
 
-	//
+	// ErrFieldNotAvailableForSorting when field which was passed through sorting parameters was recognized but it not
+	// available for sorting.
 	ErrFieldNotAvailableForSorting = errors.New("field not available for sorting")
 )
 
@@ -285,10 +286,10 @@ const (
 	SortingDirectionUnspecified SortingDirection = "UNSPECIFIED"
 
 	//
-	SortingDirectionAsc         SortingDirection = "ASC"
+	SortingDirectionAsc SortingDirection = "ASC"
 
 	//
-	SortingDirectionDesc        SortingDirection = "DESC"
+	SortingDirectionDesc SortingDirection = "DESC"
 )
 
 //

@@ -3,7 +3,7 @@ package http
 import (
 	"context"
 	"encoding/csv"
-	"io"
+	"fmt"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -15,6 +15,11 @@ import (
 )
 
 var ErrTooManyRequests = errors.New("too many requests")
+
+const (
+	DefaultRequestTimeout = time.Millisecond * 10
+	DefaultMaxRequests    = 10
+)
 
 type ProductFetcher struct {
 	c Client
@@ -29,56 +34,20 @@ func NewProductFetcher(c Client, logger *zap.Logger) (f *ProductFetcher) {
 	return &ProductFetcher{
 		c: c,
 
-		requestTimeout: time.Millisecond * 10,
-		maxRequests:    10,
+		requestTimeout: DefaultRequestTimeout,
+		maxRequests:    DefaultMaxRequests,
 
 		logger: logger,
 	}
 }
 
 func (f *ProductFetcher) Fetch(ctx context.Context, u *url.URL, timeMark time.Time) (pp []atlant.Product, err error) {
-	var (
-		i    int
-		resp *http.Response
-	)
-
-	for {
-		f.logger.Debug("fetch file", zap.Int("attempt", i+1))
-
-		resp, err = f.c.Get(ctx, u.String())
-		if err != nil {
-			return nil, err
-		}
-
-		f.logger.Debug("got response",
-			zap.Int("status_code", resp.StatusCode),
-			zap.String("status", resp.Status),
-			zap.Int64("content_length", resp.ContentLength))
-
-		if fileWasFound(resp) {
-			break
-		}
-
-		if fileDoesNotExist(resp) {
-			return nil, atlant.ErrFileDoesNotExist
-		}
-
-		if !shouldTryAgain(resp, f.maxRequests, i) {
-			return nil, ErrTooManyRequests
-		}
-
-		f.logger.Debug("wait before another call", zap.Duration("timeout", f.requestTimeout))
-
-		i++
-		<-time.After(f.requestTimeout)
+	resp, err := f.get(ctx, u)
+	if err != nil {
+		return nil, err
 	}
 
-	defer func(closer io.Closer, logger *zap.Logger) {
-		if closeErr := closer.Close(); closeErr != nil {
-			logger.Error("close response error", zap.Error(closeErr))
-			err = closeErr
-		}
-	}(resp.Body, f.logger)
+	defer resp.Body.Close()
 
 	r := csv.NewReader(resp.Body)
 	r.Comma = ';'
@@ -108,6 +77,42 @@ func (f *ProductFetcher) Fetch(ctx context.Context, u *url.URL, timeMark time.Ti
 	}
 
 	return pp, nil
+}
+
+func (f *ProductFetcher) get(ctx context.Context, s fmt.Stringer) (resp *http.Response, err error) {
+	var i int
+
+	for {
+		f.logger.Debug("fetch file", zap.Int("attempt", i+1))
+
+		resp, err = f.c.Get(ctx, s.String())
+		if err != nil {
+			return nil, err
+		}
+
+		f.logger.Debug("got response",
+			zap.Int("status_code", resp.StatusCode),
+			zap.String("status", resp.Status),
+			zap.Int64("content_length", resp.ContentLength))
+
+		if fileWasFound(resp) {
+			return resp, nil
+		}
+
+		if fileDoesNotExist(resp) {
+			return nil, atlant.ErrFileDoesNotExist
+		}
+
+		if !shouldTryAgain(resp, f.maxRequests, i) {
+			return nil, ErrTooManyRequests
+		}
+
+		f.logger.Debug("wait before another call", zap.Duration("timeout", f.requestTimeout))
+
+		i++
+
+		<-time.After(f.requestTimeout)
+	}
 }
 
 func fileDoesNotExist(r *http.Response) bool {

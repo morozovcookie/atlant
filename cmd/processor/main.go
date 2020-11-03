@@ -29,7 +29,6 @@ func main() {
 	logger = logger.With(zap.String("app", appname))
 
 	cfg := config.New()
-
 	if err = cfg.Parse(); err != nil {
 		logger.Fatal("config parse error", zap.Error(err))
 	}
