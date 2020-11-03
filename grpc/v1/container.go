@@ -4,8 +4,6 @@ import (
 	"github.com/morozovcookie/atlant"
 )
 
-// TODO: this is weird - I should move this file to another place
-
 //
 type Container struct {
 	//

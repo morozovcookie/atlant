@@ -18,7 +18,7 @@ var (
 	ErrInvalidLimitParameterMinValue = errors.New(`"limit" value should be greater or equal 1`)
 	ErrInvalidLimitParameterMaxValue = errors.New(`"limit" value should be less or equal 100`)
 
-	ErrInvalidSortingParamter = errors.New("invalid sorting parameter")
+	ErrInvalidSortingParameter = errors.New("invalid sorting parameter")
 )
 
 type Flag interface {
@@ -36,15 +36,15 @@ func (f *HostFlag) Pointer() (p *string) {
 }
 
 func (f HostFlag) Validate() (err error) {
-	//if f.String() == "" {
-	//	return ErrEmptyHostFlag
-	//}
-	//
-	//r := regexp.MustCompile(`^(((\d{1,3}\.){3}(\d{1,3}))|((\w+\.){2}(\w+))):(\d{4,5})$`)
-	//
-	//if !r.MatchString(f.String()) {
-	//	return errors.New(ErrInvalidHostValue.Error() + ": " + f.String())
-	//}
+	if f.String() == "" {
+		return ErrEmptyHostFlag
+	}
+
+	r := regexp.MustCompile(`^(((\d{1,3}\.){3}(\d{1,3}))|((\w+\.){2}(\w+))):(\d{4,5})$`)
+
+	if !r.MatchString(f.String()) {
+		return errors.New(ErrInvalidHostValue.Error() + ": " + f.String())
+	}
 
 	return nil
 }
@@ -135,7 +135,7 @@ func (f SortFlag) Validate() (err error) {
 
 	for _, s := range f.StringArray() {
 		if !r.MatchString(s) {
-			return errors.WithMessage(ErrInvalidSortingParamter, s)
+			return errors.WithMessage(ErrInvalidSortingParameter, s)
 		}
 	}
 
