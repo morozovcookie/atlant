@@ -58,21 +58,19 @@ func (f *ProductFetcher) Fetch(ctx context.Context, u *url.URL, timeMark time.Ti
 		return nil, nil
 	}
 
-	pp = make([]atlant.Product, len(ss))
+	pp = make([]atlant.Product, 0, len(ss))
 
 	for i, s := range ss {
 		f.logger.Debug("parse line",
 			zap.Int("line number", i),
 			zap.Strings("line", s))
 
-		pp[i] = atlant.Product{
-			Name:      s[0],
-			CreatedAt: timeMark,
-		}
-
-		if pp[i].Price, err = strconv.ParseFloat(s[1], 64); err != nil {
+		price, err := strconv.ParseFloat(s[1], 64)
+		if err != nil {
 			return nil, err
 		}
+
+		pp = append(pp, *(atlant.NewProduct(s[0], price, timeMark)))
 	}
 
 	return pp, nil

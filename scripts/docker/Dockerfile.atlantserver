@@ -8,22 +8,20 @@ RUN go mod download
 
 ADD product.go ./
 
-# ADD ./time ./time/
+ADD ./time ./time/
 
-# ADD ./http ./http/
+ADD ./http ./http/
 
-# ADD ./api ./api/
-# ADD ./grpc ./grpc/
+ADD ./api ./api/
+ADD ./grpc ./grpc/
 
-# ADD ./kafka/producer ./kafka/producer/
-# ADD ./kafka/v1 ./kafka/v1/
-# ADD ./kafka/*.go ./kafka/
+ADD ./kafka/producer ./kafka/producer/
+ADD ./kafka/v1 ./kafka/v1/
+ADD ./kafka/*.go ./kafka/
 
-# ADD ./mongodb ./mongodb/
+ADD ./mongodb ./mongodb/
 
-# ADD ./cmd/atlantserver ./cmd/atlantserver
-
-ADD . ./
+ADD ./cmd/atlantserver ./cmd/atlantserver
 
 RUN GOOS=linux GOARCH=amd64 go build -ldflags "-s -w" -o ./out/atlantserver ./cmd/atlantserver/main.go
 

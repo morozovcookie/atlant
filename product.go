@@ -11,26 +11,122 @@ import (
 	"github.com/stretchr/testify/mock"
 )
 
-// Product represent product record from external source.
-type Product struct {
-	// UpdateCount represent how many times product was modified
-	UpdateCount int
+// ProductChanging represent record about products price changing
+type ProductChanging struct {
+	// OldPrice is a product price before changing
+	OldPrice float64 `bson:"old_price"`
 
-	// Price is a current products price
-	Price float64
+	// NewPrice is a product price after changing
+	NewPrice float64 `bson:"new_price"`
 
-	// Name is products name
-	Name string
+	// RequestID is a client request identifier
+	RequestID string `bson:"request_id"`
 
-	// CreatedAt is a products created time
-	CreatedAt time.Time
+	// ChangeID is a changing identifier
+	ChangeID string `bson:"change_id"`
 
-	// UpdatedAt is a products price time updated
-	UpdatedAt time.Time
+	// CreatedAt is a time of product price changing
+	CreatedAt time.Time `bson:"created_at"`
 }
 
+// Product represent product record from external source.
+type Product struct {
+	// updateCount represent how many times product was modified
+	updateCount int
+
+	// price is a current products price
+	price float64
+
+	// name is products name
+	name string
+
+	// createdAt is a products created time
+	createdAt time.Time
+
+	// updatedAt is a products price time updated
+	updatedAt time.Time
+
+	// changeHistoryDataIndex
+	changeHistoryDataIndex map[string]*ProductChanging
+
+	// changeHistoryData is a set of all changes of current product
+	// maybe the best option will be replace slice with list? and replace index with some structure too.
+	changeHistoryData []ProductChanging
+}
+
+//
+func NewProduct(name string, price float64, createdAt time.Time) (p *Product) {
+	return &Product{
+		updateCount:            0,
+		price:                  price,
+		name:                   name,
+		createdAt:              createdAt,
+		updatedAt:              time.Unix(0, 0),
+		changeHistoryDataIndex: make(map[string]*ProductChanging, 0),
+		changeHistoryData:      make([]ProductChanging, 0),
+	}
+}
+
+//
+func (p Product) UpdateCount() (c int) {
+	return p.updateCount
+}
+
+//
+func (p Product) Price() (price float64) {
+	return p.price
+}
+
+//
+func (p Product) Name() (name string) {
+	return p.name
+}
+
+//
+func (p Product) CreatedAt() (t time.Time) {
+	return p.createdAt
+}
+
+//
+func (p Product) UpdatedAt() (t time.Time) {
+	return p.updatedAt
+}
+
+//
+func (p Product) ChangeHistory() (ch []ProductChanging) {
+	return p.changeHistoryData
+}
+
+//
+func (p Product) HasChangeBeenApplied(changeID string) (hasBeenApplied bool) {
+	_, hasBeenApplied = p.changeHistoryDataIndex[changeID]
+	return hasBeenApplied
+}
+
+//
+func (p Product) HasPriceBeenChanged(price float64) (hasPriceChanged bool) {
+	return p.price != price
+}
+
+//
+func (p *Product) ApplyChange(c *ProductChanging) {
+	p.updateCount = p.updateCount + 1
+	p.price = c.NewPrice
+	p.updatedAt = c.CreatedAt
+
+	p.changeHistoryData = append(p.changeHistoryData, ProductChanging{
+		OldPrice:  c.OldPrice,
+		NewPrice:  c.NewPrice,
+		RequestID: c.RequestID,
+		ChangeID:  c.ChangeID,
+		CreatedAt: c.CreatedAt,
+	})
+	p.changeHistoryDataIndex[c.ChangeID] = &p.changeHistoryData[len(p.changeHistoryData)-1]
+}
+
+//
 func (p Product) ID() (id string) {
-	hs := sha256.Sum256(append([]byte{}, p.Name...))
+	hs := sha256.Sum256(append([]byte{}, p.name...))
 
 	return hex.EncodeToString(hs[:])
 }
@@ -54,31 +150,37 @@ func (pf *MockProductFetcher) Fetch(ctx context.Context, u *url.URL, timeMark ti
 // ProductStorer save products list.
 type ProductStorer interface {
 	// Store saves products collection in storage.
-	Store(ctx context.Context, pp ...Product) (err error)
+	Store(ctx context.Context, reqID string, pp ...Product) (err error)
 }
 
 type MockProductStorer struct {
 	mock.Mock
 }
 
-func (ps *MockProductStorer) Store(ctx context.Context, pp ...Product) (err error) {
+func (ps *MockProductStorer) Store(ctx context.Context, reqID string, pp ...Product) (err error) {
 	return ps.Called(ctx, pp).Error(0)
 }
 
+//
 type StartParameter int64
 
+//
 func NewStartParameter(val int64) (p StartParameter) {
 	return StartParameter(val)
 }
 
+//
 func (p StartParameter) Int64() (val int64) {
 	return (int64)(p)
 }
 
+//
 const MinStartParameterValue int64 = 0
 
+//
 var ErrInvalidStartParameterValue = errors.New(`"start" value should be greater or equal zero`)
 
+//
 func (p StartParameter) Validate() (err error) {
 	if p.Int64() < MinStartParameterValue {
 		return ErrInvalidStartParameterValue
@@ -87,26 +189,36 @@ func (p StartParameter) Validate() (err error) {
 	return nil
 }
 
+//
 type LimitParameter int64
 
+//
 func NewLimitParameter(val int64) (p LimitParameter) {
 	return LimitParameter(val)
 }
 
+//
 func (p LimitParameter) Int64() (val int64) {
 	return (int64)(p)
 }
 
 const (
+	//
 	MinLimitParameterValue int64 = 1
+
+	//
 	MaxLimitParameterValue int64 = 100
 )
 
 var (
+	//
 	ErrInvalidLimitParameterMinValue = errors.New(`"limit" value should be greater or equal 1`)
+
+	//
 	ErrInvalidLimitParameterMaxValue = errors.New(`"limit" value should be less or equal 100`)
 )
 
+//
 func (p LimitParameter) Validate() (err error) {
 	if p.Int64() < MinLimitParameterValue {
 		return ErrInvalidLimitParameterMinValue
@@ -119,17 +231,23 @@ func (p LimitParameter) Validate() (err error) {
 	return nil
 }
 
+//
 type SortingField string
 
+//
 func (f SortingField) String() (s string) {
 	return string(f)
 }
 
 var (
+	//
 	ErrUnknownField                = errors.New("unknown field")
+
+	//
 	ErrFieldNotAvailableForSorting = errors.New("field not available for sorting")
 )
 
+//
 func (f SortingField) Validate() (err error) {
 	var (
 		productFieldsMap = map[string]struct{}{
@@ -161,17 +279,25 @@ func (f SortingField) Validate() (err error) {
 }
 
 const (
+	//
 	SortingDirectionUnspecified SortingDirection = "UNSPECIFIED"
+
+	//
 	SortingDirectionAsc         SortingDirection = "ASC"
+
+	//
 	SortingDirectionDesc        SortingDirection = "DESC"
 )
 
+//
 type SortingDirection string
 
+//
 func (d SortingDirection) String() (s string) {
 	return string(d)
 }
 
+//
 func (d *SortingDirection) Validate() {
 	if *d == SortingDirectionUnspecified {
 		*d = SortingDirectionAsc
@@ -187,6 +313,7 @@ type ProductSortingOption struct {
 	Direction SortingDirection
 }
 
+//
 func NewProductSortingOption(f SortingField, d SortingDirection) ProductSortingOption {
 	return ProductSortingOption{
 		Field:     f,
@@ -194,14 +321,17 @@ func NewProductSortingOption(f SortingField, d SortingDirection) ProductSortingO
 	}
 }
 
+//
 func (opt ProductSortingOption) Validate() (err error) {
 	opt.Direction.Validate()
 
 	return opt.Field.Validate()
 }
 
+//
 type ProductSortingOptions []ProductSortingOption
 
+//
 func (opts ProductSortingOptions) Validate() (err error) {
 	for _, opt := range opts {
 		if err = opt.Validate(); err != nil {
@@ -241,7 +371,8 @@ func (pl *MockProductLister) List(
 
 //
 type ProductStorage interface {
-	ProductStorer
+	//
+	StoreProduct(ctx context.Context, p *Product) (err error)
 
 	//
 	GetByProductID(ctx context.Context, productID string) (p *Product, err error)
@@ -251,8 +382,8 @@ type MockProductStorage struct {
 	mock.Mock
 }
 
-func (ps *MockProductStorage) Store(ctx context.Context, pp ...Product) (err error) {
-	return ps.Called(ctx, pp).Error(0)
+func (ps *MockProductStorage) StoreProduct(ctx context.Context, p *Product) (err error) {
+	return ps.Called(ctx, p).Error(0)
 }
 
 func (ps *MockProductStorage) GetByProductID(ctx context.Context, productID string) (p *Product, err error) {

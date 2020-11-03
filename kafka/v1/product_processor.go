@@ -35,10 +35,11 @@ func (pp *ProductProcessor) ProcessProduct(r io.Reader) (err error) {
 	defer cancel()
 
 	rp := &struct {
-		Name      string  `json:"name"`
-		Price     float64 `json:"price"`
 		CreatedAt int64   `json:"created_at"`
-		UpdatedAt int64   `json:"updated_at"`
+		Price     float64 `json:"price"`
+		Name      string  `json:"name"`
+		ChangeID  string  `json:"change_id"`
+		RequestID string  `json:"request_id"`
 	}{}
 
 	// I think that this should be error, but message should committed, because we never can be unmarshal bad message.
@@ -46,33 +47,32 @@ func (pp *ProductProcessor) ProcessProduct(r io.Reader) (err error) {
 		return kafka.ErrDecodeIncomingMessage
 	}
 
-	p := &atlant.Product{
-		Name:      rp.Name,
-		Price:     rp.Price,
-		CreatedAt: time.Unix(0, rp.CreatedAt),
-		UpdatedAt: time.Unix(0, rp.UpdatedAt),
-	}
+	p := atlant.NewProduct(rp.Name, rp.Price, time.Unix(0, rp.CreatedAt))
 
 	mp, err := pp.storage.GetByProductID(ctx, p.ID())
 	if err != nil {
 		return err
 	}
 
-	// if exists and price did not changed -> skip
-	if mp != nil && mp.Price == p.Price {
+	if mp == nil {
+		return pp.storage.StoreProduct(ctx, p)
+	}
+
+	if mp.HasChangeBeenApplied(rp.ChangeID) {
 		return nil
 	}
 
-	// Update if exist
-	if mp != nil {
-		mp.Price = p.Price
-		mp.UpdatedAt = p.CreatedAt
-		mp.UpdateCount++
+	if !mp.HasPriceBeenChanged(p.Price()) {
+		return nil
 	}
 
-	if mp == nil {
-		mp = p
-	}
+	mp.ApplyChange(&atlant.ProductChanging{
+		CreatedAt: time.Unix(0, rp.CreatedAt),
+		OldPrice:  mp.Price(),
+		NewPrice:  rp.Price,
+		RequestID: rp.RequestID,
+		ChangeID:  rp.ChangeID,
+	})
 
-	return pp.storage.Store(ctx, *mp)
+	return pp.storage.StoreProduct(ctx, mp)
 }

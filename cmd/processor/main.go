@@ -91,7 +91,8 @@ func initConsumer(cfg *config.Config, logger *zap.Logger) (c *consumer.Consumer,
 		consumer.WithServers(cfg.KafkaProductConsumerConfig.Servers),
 		consumer.WithTopic("docker.atlant.cdc.products.0"),
 		consumer.WithGroupID(appname),
-		consumer.WithIsolationLevel(consumer.IsolationLevelReadCommitted))
+		consumer.WithIsolationLevel(consumer.IsolationLevelReadCommitted),
+		consumer.WithAutoOffsetReset(consumer.AutoOffsetResetEarliest))
 }
 
 func initMongoDB(cfg *config.Config) (mc *mongodb.Client, err error) {

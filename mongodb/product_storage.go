@@ -13,6 +13,24 @@ import (
 )
 
 //
+type ProductChanging struct {
+	//
+	CreatedAt int64 `bson:"created_at"`
+
+	//
+	OldPrice float64 `bson:"old_price"`
+
+	//
+	NewPrice float64 `bson:"new_price"`
+
+	//
+	RequestID string `bson:"request_id"`
+
+	//
+	ChangeID string `bson:"change_id"`
+}
+
+//
 type Product struct {
 	//
 	UpdateCount *int `bson:"update_count"`
@@ -31,6 +49,9 @@ type Product struct {
 
 	//
 	Name string `bson:"name"`
+
+	//
+	ChangeHistory []ProductChanging `bson:"change_history"`
 }
 
 //
@@ -57,30 +78,36 @@ func NewProductStorage(mc MongoCollector, logger *zap.Logger) *ProductStorage {
 }
 
 //
-func (ps *ProductStorage) Store(ctx context.Context, pp ...atlant.Product) (err error) {
-	if len(pp) != 1 {
-		return ErrTooMuchObjectsForStore
-	}
-
+func (ps *ProductStorage) StoreProduct(ctx context.Context, p *atlant.Product) (err error) {
 	var (
-		p      = pp[0]
 		filter = bson.D{{Key: "product_id", Value: p.ID()}}
 		mp     = &Product{
-			CreatedAt: p.CreatedAt.UnixNano(),
-			Price:     p.Price,
-			ID:        p.ID(),
-			Name:      p.Name,
+			CreatedAt:     p.CreatedAt().UnixNano(),
+			Price:         p.Price(),
+			ID:            p.ID(),
+			Name:          p.Name(),
+			ChangeHistory: make([]ProductChanging, 0, len(p.ChangeHistory())),
 		}
 	)
 
-	if p.UpdateCount != 0 {
-		mp.UpdateCount = new(int)
-		*(mp.UpdateCount) = p.UpdateCount
+	for _, c := range p.ChangeHistory() {
+		mp.ChangeHistory = append(mp.ChangeHistory, ProductChanging{
+			OldPrice:  c.OldPrice,
+			NewPrice:  c.NewPrice,
+			RequestID: c.RequestID,
+			ChangeID:  c.ChangeID,
+			CreatedAt: c.CreatedAt.UnixNano(),
+		})
 	}
 
-	if p.UpdatedAt.UnixNano() != 0 {
+	if p.UpdateCount() != 0 {
+		mp.UpdateCount = new(int)
+		*(mp.UpdateCount) = p.UpdateCount()
+	}
+
+	if p.UpdatedAt().UnixNano() != 0 {
 		mp.UpdatedAt = new(int64)
-		*(mp.UpdatedAt) = p.UpdatedAt.UnixNano()
+		*(mp.UpdatedAt) = p.UpdatedAt().UnixNano()
 	}
 
 	_, err = ps.products.UpdateOne(ctx, filter, bson.M{"$set": mp}, options.Update().SetUpsert(true))
@@ -98,7 +125,7 @@ func (ps *ProductStorage) GetByProductID(ctx context.Context, productID string) 
 		filter = bson.D{{Key: "product_id", Value: productID}}
 	)
 
-	if err = ps.products.FindOne(ctx, filter).Decode(&mp); err != nil {
+	if err = ps.products.FindOne(ctx, filter).Decode(mp); err != nil {
 		if errors.Is(mongo.ErrNoDocuments, err) {
 			return nil, nil
 		}
@@ -106,18 +133,16 @@ func (ps *ProductStorage) GetByProductID(ctx context.Context, productID string) 
 		return nil, err
 	}
 
-	p = &atlant.Product{
-		Price:     mp.Price,
-		Name:      mp.Name,
-		CreatedAt: time.Unix(0, mp.CreatedAt),
-	}
+	p = atlant.NewProduct(mp.Name, mp.Price, time.Unix(0, mp.CreatedAt))
 
-	if mp.UpdateCount != nil {
-		p.UpdateCount = *(mp.UpdateCount)
-	}
-
-	if mp.UpdatedAt != nil {
-		p.UpdatedAt = time.Unix(0, *(mp.UpdatedAt))
+	for _, c := range mp.ChangeHistory {
+		p.ApplyChange(&atlant.ProductChanging{
+			OldPrice:  c.OldPrice,
+			NewPrice:  c.NewPrice,
+			RequestID: c.RequestID,
+			ChangeID:  c.ChangeID,
+			CreatedAt: time.Unix(0, c.CreatedAt),
+		})
 	}
 
 	return p, nil
@@ -148,9 +173,7 @@ func (ps *ProductStorage) List(
 	pp = make([]atlant.Product, 0, limit.Int64())
 
 	var (
-		i = 0
-
-		p  atlant.Product
+		p  *atlant.Product
 		mp Product
 	)
 
@@ -159,32 +182,26 @@ func (ps *ProductStorage) List(
 			return nil, err
 		}
 
-		p = atlant.Product{
-			Price:       mp.Price,
-			Name:        mp.Name,
-			UpdateCount: 0,
-			CreatedAt:   time.Unix(0, mp.CreatedAt),
-			UpdatedAt:   time.Unix(0, 0),
+		p = atlant.NewProduct(mp.Name, mp.Price, time.Unix(0, mp.CreatedAt))
+
+		for _, c := range mp.ChangeHistory {
+			p.ApplyChange(&atlant.ProductChanging{
+				OldPrice:  c.OldPrice,
+				NewPrice:  c.NewPrice,
+				RequestID: c.RequestID,
+				ChangeID:  c.ChangeID,
+				CreatedAt: time.Unix(0, c.CreatedAt),
+			})
 		}
 
-		if mp.UpdateCount != nil {
-			p.UpdateCount = *(mp.UpdateCount)
-		}
-
-		if mp.UpdatedAt != nil {
-			p.UpdatedAt = time.Unix(0, *(mp.UpdatedAt))
-		}
-
-		pp = append(pp, p)
-
-		i++
+		pp = append(pp, *p)
 	}
 
 	if err = rows.Err(); err != nil {
 		return nil, err
 	}
 
-	return pp[:i], nil
+	return pp, nil
 }
 
 func initListOptions(

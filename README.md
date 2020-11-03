@@ -26,13 +26,20 @@ Atlant gRPC Server
 
 # Usage
 
-<!-- place your text here -->
+```bash
+# Run containers, create topic and apply migrations
+$ make run
+
+
+# Stop project
+$ make stop
+```
 
 # TODO
 
 Here is list of some features that could be implemented in the future:
 
-- [X] Finish docker-compose deploy
+- [x] Finish docker-compose deploy
 - [ ] Metrics
 - [ ] Liveness/Readiness probes
 - [ ] Producer and consumer compression
@@ -45,12 +52,16 @@ Here is list of some features that could be implemented in the future:
     - [ ] Functional tests
 - [ ] GitHub Actions
 - [ ] Code docs
-- [ ] Use earliest offset in Kafka and changes history for indempotence
-- [ ] Write changes history on products fetching
+- [x] Use earliest offset in Kafka and changes history for indempotence
+- [x] Write changes history on products fetching
 - [ ] Move Kafka from wurstmeister to confluentc
 - [ ] Support more protocols, not only http(s)
 - [ ] Use high-availability MongoDB cluster
 - [ ] Move from Nginx ingres to Envoy mesh network
+- [ ] Replace JSON with Avro
+- [ ] Configurable encoders and decoders
+- [ ] Verify Kafka Cluster high availability
+- [ ] Circuit breaker for file fetcher
 
 # Credits
 

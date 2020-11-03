@@ -6,17 +6,15 @@ ADD go.mod go.sum ./
 
 RUN go mod download
 
-# ADD product.go ./
+ADD product.go ./
 
-# ADD ./kafka/consumer ./kafka/consumer/
-# ADD ./kafka/v1 ./kafka/v1/
-# ADD ./kafka/*.go ./kafka/
+ADD ./kafka/consumer ./kafka/consumer/
+ADD ./kafka/v1 ./kafka/v1/
+ADD ./kafka/*.go ./kafka/
 
-# ADD ./mongodb ./mongodb/
+ADD ./mongodb ./mongodb/
 
-# ADD ./cmd/processor ./cmd/processor
-
-ADD . ./
+ADD ./cmd/processor ./cmd/processor
 
 RUN GOOS=linux GOARCH=amd64 go build -ldflags "-s -w" -o ./out/processor ./cmd/processor/main.go
 
