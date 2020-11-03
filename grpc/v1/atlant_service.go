@@ -65,6 +65,10 @@ func (s *AtlantService) Fetch(ctx context.Context, r *FetchRequest) (_ *empty.Em
 
 	pp, err := s.fetcher.Fetch(ctx, u, s.clock.NowInUTC())
 	if err != nil {
+		if stderrors.Is(atlant.ErrFileDoesNotExist, err) {
+			return nil, status.Error(codes.NotFound, err.Error())
+		}
+
 		s.logger.Error("fetch error", zap.Error(err))
 
 		return nil, status.Error(codes.Internal, err.Error())
