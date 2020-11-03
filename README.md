@@ -1,33 +1,82 @@
-Atlant gRPC Server
+Atlant Server
 =================
 
-<!-- place short description here -->
+This project represent my own variant of realization test from Tensigma LTD. Full description yoy can find [here (RU)](DESCRIPTION_RU.md).
 
 <!-- place badges here -->
+
 
 # Table of Contents
 
 - [Requirements](#requirements)
-- [Installation](#installation)
+- [Architecture](#architecture)
+    - [Full picture](#full-picture)
+    - [Fetch process](#fetch-process)
+    - [List process](#list-process)
 - [Usage](#usage)
 - [TODO](#todo)
-- [Credits](#credits)
+
 
 # Requirements
 
-- GoLang >=1.15.3
-- GoLangCI-Lint >=1.31.0
+Below you can find list of minimal requirements of items which I used for building this project:
+
+- GoLang >= 1.15.3
+- GoLangCI-Lint >= 1.31.0
 - Docker >= 19.03.13
 - Docker-Compose >= 1.27.4
+- Kafka = 2.6.0 (Scala 2.13)
+- Zookeeper = 3.4.13
+- MongoDB = 4.4.1-3
 
-# Installation
 
-<!-- place your text here -->
+# Architecture
+
+In this section you can find a visualisation of how it should work (and maybe some comments about why I choose exactly that method or another).
+
+## Full picture
+
+Let is start from the full picture. This picture represents all components involved in this project.
+
+![Full Component Diagram](img/full_component_diagram.png)
+
+For the basic two process I decided make a two diagrams: component and sequence, and these diagrams could describe each process very accurate.
+
+## Fetch process
+
+Fetch process is a process when you pass csv file url (only http(s) available) to the server which download, parse and save files data into MongoDB.  
+I decided to use the Apache Kafka and [the second service](cmd/processor) for guaranteed and asynchronous file data processing. 
+In this case we have more freedom to extend file processing logic because all this stuff will be in the background, hide from the client.
+
+![Fetch Component Diagram](img/fetch_component_diagram.png)
+
+![Fetch Sequence Diagram](img/fetch_command_sequence_diagram.png)
+
+## List process
+
+This process is very simple: client make a call, atlantserver receive this call, retrieve data from MongoDB and return it back to the client.
+In this case we have situation when two services share one database and one collection and this is normal, 
+because first service (processor) using database only for "write" operations, and the second (atlantserver) - only for "read" operations.
+
+![List Component Diagram](img/list_component_diagram.png)
+
+![List Sequence Diagram](img/list_command_sequence_diagram.png)
+
 
 # Usage
 
+This project contains several executable files:
+
+- [atlantclient](cmd/atlantclient/README.md) - console client for interaction with atlantserver
+- [atlantserver](cmd/atlantserver/README.md) - main but not only one part of this project
+- [processor](cmd/processor/README.md) - this little service responsible for saving line from csv-file into MongoDB
+
+More about each project component you can find in specified README files.
+
+For using all project components you can use next commands:
+
 ```bash
-# Run containers, create topic and apply migrations
+# Build and run containers, create topic and apply migrations
 $ make run
 
 
@@ -62,8 +111,3 @@ Here is list of some features that could be implemented in the future:
 - [ ] Configurable encoders and decoders
 - [ ] Verify Kafka Cluster high availability
 - [ ] Circuit breaker for file fetcher
-
-# Credits
-
-<!-- place your text here -->
-

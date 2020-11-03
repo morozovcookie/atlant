@@ -15,8 +15,6 @@ type FetchCommandOptions struct {
 	host *HostFlag
 
 	url *URLFlag
-
-	crt string
 }
 
 func (opts *FetchCommandOptions) Validate() (err error) {
@@ -86,7 +84,6 @@ func cmdFetch(logger *zap.Logger) (cmd *cobra.Command) {
 
 	cmd.Flags().StringVar(opts.host.Pointer(), "host", "", "server host")
 	cmd.Flags().StringVar(opts.url.Pointer(), "url", "", "csv resource url")
-	cmd.Flags().StringVar(&opts.crt, "crt", "", "server certificate")
 
 	return cmd
 }

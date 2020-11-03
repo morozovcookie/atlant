@@ -1,0 +1,124 @@
+@startuml Fetch Command Sequence Diagram
+
+skinparam sequenceArrowThickness 2
+skinparam maxMessageSize 384
+skinparam sequenceMessageAlign center
+skinparam sequenceParticipant underlines
+skinparam defaultTextAlignment center
+
+actor Client as c order 1
+participant "Load Balancer" as lb order 2
+participant "Atlant Server" as as order 3
+participant "File Server" as fs order 4
+database "Queue" as q order 5
+participant "Processor" as p order 5
+database "Products Storage" as mongo order 6
+
+c -> lb++: Fetch request
+
+lb -> as++: v1.AtlantService/Fetch
+
+as -> fs++: Send GET request
+return Request result
+
+alt 5XX Server error
+as -> as: Repeat request
+else 404 Not Found
+as --> lb: Client request error
+lb --> c: File not found
+else Anything else error
+as --> lb: Internal error
+lb --> c: Error
+end
+
+as -> q: Begin transaction
+activate q
+q --> as
+alt Begin transaction error
+as --> lb: Request error
+lb --> c: Error
+end
+
+q -> q: Create transaction
+activate q
+loop Send products one by one in single transaction
+as -> as: Encode product
+alt Encode product error
+as -> q: Abort transaction
+q --> as
+as --> lb: Request error
+lb --> c: Error
+end
+
+as -> q: Produce message
+q --> as
+alt Produce message error
+as -> q: Abort transaction
+q --> as
+as --> lb: Request error
+lb --> c: Error
+end
+end
+
+as -> q: Commit transaction
+q -> q: Apply changes
+q --> as
+deactivate q
+
+alt Commit transaction error
+as -> q: Abort transaction
+q --> as
+as --> lb: Request error
+lb --> c: Error
+end
+deactivate q
+
+return
+return
+
+
+q -> p++: Consume message
+
+p -> p: Decode message
+alt Decode message error
+p --> q: Acknowledgment
+end
+
+p -> mongo++: Get product by id
+return Request result
+
+alt Request error
+p --> q: No Acknowledgment
+end
+
+alt Product does not exist
+p -> mongo++: Store product
+return Request result
+
+alt Request error
+p --> q: No Acknowledgment
+end
+end
+
+p -> p: Find change in product change history
+alt Has change been applied?
+p --> q: Acknowledgment
+end
+
+p -> p: Check price change
+alt Has not price been changed?
+p --> q: Acknowledgment
+end
+
+p -> p: Apply change
+
+p -> mongo++: Store product
+return Request result
+
+alt Request error
+p --> q: No Acknowledgment
+end
+
+return Acknowledgment
+
+@enduml
